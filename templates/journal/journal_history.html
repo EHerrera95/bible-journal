@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Journal History - Bible Journal</title>
+</head>
+<body>
+    <h1>Journal History (Last 7 Days)</h1>
+
+    {% if entries %}
+        <table border="1" cellpadding="6">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Plan</th>
+                    <th>Day #</th>
+                    <th>Scripture (S)</th>
+                    <th>Observation (O)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                    <tr>
+                        <td>{{ entry.entry_date }}</td>
+                        <td>
+                            {% if entry.plan_day %}
+                                {{ entry.plan_day.plan.name }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if entry.plan_day %}
+                                {{ entry.plan_day.day_number }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>{{ entry.scripture|truncatechars:80 }}</td>
+                        <td>{{ entry.observation|truncatechars:80 }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>You don’t have any journal entries yet.</p>
+    {% endif %}
+
+    <p><a href="{% url 'today' %}">&larr; Back to Today</a></p>
+</body>
+</html>

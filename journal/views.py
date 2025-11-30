@@ -1,8 +1,7 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
-
 
 from django.http import HttpResponseRedirect
 from django.urls import reverse
@@ -14,6 +13,10 @@ from .forms import JournalEntryForm
 
 @login_required(login_url="/admin/login/")
 def today_view(request):
+    
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    
     # Ensure the user has a Profile row
     profile, _ = Profile.objects.get_or_create(user=request.user)
 
@@ -33,14 +36,29 @@ def today_view(request):
             .first()
         )
 
+    # Get today's entry (we may use this later)
+    today_entry = (
+        JournalEntry.objects
+        .filter(user=request.user, entry_date=today)
+        .first()
+    )
+
+        # Get yesterday's entry
+    yesterday_entry = (
+        JournalEntry.objects
+        .filter(user=request.user, entry_date=yesterday)
+        .first()
+    )
+
     context = {
         "today": date.today(),
         "has_plan": has_plan,
         "plan_day": plan_day,
         "day_number": day_number,
+        "today_entry": today_entry,
+        "yesterday_entry": yesterday_entry,
     }
     return render(request, "journal/today.html", context)
-
 
 @login_required(login_url="/admin/login/")
 def journal_today_view(request):
@@ -97,3 +115,21 @@ def journal_today_view(request):
         "is_edit": journal_entry is not None,
     }
     return render(request, "journal/journal_today.html", context)
+
+@login_required(login_url="/admin/login/")
+def journal_history_view(request):
+    """
+    Show the last 7 journal entries for the logged-in user.
+    """
+    entries = (
+        JournalEntry.objects
+        .filter(user=request.user)
+        .select_related("plan_day", "plan_day__plan")
+        .order_by("-entry_date")[:7]
+    )
+
+    context = {
+        "entries": entries,
+    }
+    return render(request, "journal/journal_history.html", context)
+

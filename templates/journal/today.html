@@ -1,42 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Today - Bible Journal</title>
 </head>
+
 <body>
     <h1>Today’s Reading</h1>
 
     <p><strong>Date:</strong> {{ today }}</p>
 
     {% if user.is_authenticated %}
-        {% if has_plan %}
-            {% if plan_day %}
-                <h2>Plan: {{ plan_day.plan.name }}</h2>
-                <p><strong>Day:</strong> {{ day_number }}</p>
+    {% if has_plan %}
+    {% if plan_day %}
+    <h2>Plan: {{ plan_day.plan.name }}</h2>
+    <p><strong>Day:</strong> {{ day_number }}</p>
 
-                <h3>Passages</h3>
-                <p>{{ plan_day.passages }}</p>
+    <h3>Passages</h3>
+    <p>{{ plan_day.passages }}</p>
 
-                <h3>Key Verse</h3>
-                <p>{{ plan_day.key_verse_ref }}</p>
+    <h3>Key Verse</h3>
+    <p>{{ plan_day.key_verse_ref }}</p>
 
-                <hr>
-                <p>
-                    <a href="{% url 'journal_today' %}">Write / Edit Today’s SOAP</a>
-                </p>
-            {% else %}
-                <p>
-                    You’re on day {{ day_number }} of your plan,
-                    but there’s no reading defined for this day yet.
-                </p>
-            {% endif %}
-        {% else %}
-            <p>You haven’t selected a reading plan or start date yet.</p>
-            <p>(Later: we’ll add a “Pick a plan” page and link to it here.)</p>
-        {% endif %}
+    <hr>
+    <h2>Yesterday’s Entry</h2>
+
+    {% if yesterday_entry %}
+    <p><strong>Date:</strong> {{ yesterday_entry.entry_date }}</p>
+    <p><strong>Scripture:</strong> {{ yesterday_entry.scripture|truncatechars:120 }}</p>
+    <p><strong>Observation:</strong> {{ yesterday_entry.observation|truncatechars:120 }}</p>
+    <p>
+        <a href="{% url 'journal_history' %}">View recent history</a>
+    </p>
     {% else %}
-        <p>Please <a href="/admin/login/">log in</a> to see today’s reading.</p>
+    <p>No entry for yesterday yet.</p>
+    {% endif %}
+
+    <hr>
+    <p>
+        <a href="{% url 'journal_today' %}">Write / Edit Today’s SOAP</a>
+    </p>
+
+    <p>
+        <a href="{% url 'journal_history' %}">See last 7 entries</a>
+    </p>
+
+    {% else %}
+    <p>
+        You’re on day {{ day_number }} of your plan,
+        but there’s no reading defined for this day yet.
+    </p>
+    {% endif %}
+    {% else %}
+    <p>You haven’t selected a reading plan or start date yet.</p>
+    <p>(Later: we’ll add a “Pick a plan” page and link to it here.)</p>
+    {% endif %}
+    {% else %}
+    <p>Please <a href="/admin/login/">log in</a> to see today’s reading.</p>
     {% endif %}
 </body>
+
 </html>
