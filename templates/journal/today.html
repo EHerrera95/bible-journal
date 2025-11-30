@@ -22,7 +22,9 @@
                 <p>{{ plan_day.key_verse_ref }}</p>
 
                 <hr>
-                <p>(Later: button/link here to write today’s SOAP entry)</p>
+                <p>
+                    <a href="{% url 'journal_today' %}">Write / Edit Today’s SOAP</a>
+                </p>
             {% else %}
                 <p>
                     You’re on day {{ day_number }} of your plan,

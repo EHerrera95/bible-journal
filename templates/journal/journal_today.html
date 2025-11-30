@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Today’s SOAP - Bible Journal</title>
+</head>
+<body>
+    <h1>Today’s SOAP Entry</h1>
+
+    <p><strong>Date:</strong> {{ today }}</p>
+    <p><strong>Plan:</strong> {{ plan_day.plan.name }}</p>
+    <p><strong>Day:</strong> {{ day_number }}</p>
+
+    <h3>Passages</h3>
+    <p>{{ plan_day.passages }}</p>
+
+    <h3>Key Verse</h3>
+    <p>{{ plan_day.key_verse_ref }}</p>
+
+    <hr>
+
+    <h2>{% if is_edit %}Edit{% else %}New{% endif %} SOAP Entry</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        <table>
+            {{ form.as_table }}
+        </table>
+        <button type="submit">
+            {% if is_edit %}Update Entry{% else %}Save Entry{% endif %}
+        </button>
+    </form>
+
+    <p><a href="{% url 'today' %}">&larr; Back to Today</a></p>
+</body>
+</html>
