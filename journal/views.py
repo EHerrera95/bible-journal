@@ -9,9 +9,18 @@ from django.urls import reverse
 from .models import Profile, PlanDay, JournalEntry
 from .forms import JournalEntryForm
 
+def home_view(request):
+    """
+    Home page:
+    - If user is logged in, send them straight to /today/
+    - If not, show a simple welcome with a Login link.
+    """
+    if request.user.is_authenticated:
+        return redirect("today")
 
+    return render(request, "journal/home.html")
 
-@login_required(login_url="/admin/login/")
+@login_required
 def today_view(request):
     
     today = date.today()
@@ -60,7 +69,7 @@ def today_view(request):
     }
     return render(request, "journal/today.html", context)
 
-@login_required(login_url="/admin/login/")
+@login_required
 def journal_today_view(request):
     """
     Create or edit today's SOAP entry for the logged-in user.
@@ -116,7 +125,7 @@ def journal_today_view(request):
     }
     return render(request, "journal/journal_today.html", context)
 
-@login_required(login_url="/admin/login/")
+@login_required
 def journal_history_view(request):
     """
     Show the last 7 journal entries for the logged-in user.

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home - Bible Journal</title>
+</head>
+<body>
+    <h1>Welcome to Bible Journal</h1>
+
+    {% if user.is_authenticated %}
+        <p>You’re logged in as {{ user.username }}.</p>
+        <p><a href="{% url 'today' %}">Go to Today’s Reading</a></p>
+        <p><a href="{% url 'logout' %}">Log out</a></p>
+    {% else %}
+        <p>This is your space to read, reflect, and journal through Scripture.</p>
+        <p><a href="{% url 'login' %}">Log in</a> to get started.</p>
+        <!-- Later: add a sign-up link here -->
+    {% endif %}
+</body>
+</html>
