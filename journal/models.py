@@ -59,6 +59,18 @@ class Profile(models.Model):
         return f"Profile for {self.user.username}"
 
 
+class BiblePassage(models.Model):
+    """
+    Represents a specific passage in the Bible.
+    For now we keep it simple with a reference string.
+    Later we can break this into structured book/chapter/verse fields.
+    """
+    reference = models.CharField(max_length=100, unique=True)  # e.g. "Luke 2:1-20"
+
+    def __str__(self):
+        return self.reference
+
+
 class JournalEntry(models.Model):
     user = models.ForeignKey(
         User,
@@ -73,6 +85,13 @@ class JournalEntry(models.Model):
         related_name="journal_entries"
     )
     entry_date = models.DateField()  # usually today's date
+
+    # NEW: link to one or more Bible passages
+    passages = models.ManyToManyField(
+        BiblePassage,
+        related_name="journal_entries",
+        blank=True,
+    )
 
     # SOAP fields
     scripture = models.TextField()    # S
@@ -89,3 +108,4 @@ class JournalEntry(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.entry_date}"
+

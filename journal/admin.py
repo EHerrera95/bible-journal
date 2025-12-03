@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ReadingPlan, PlanDay, Profile, JournalEntry
+from .models import ReadingPlan, PlanDay, Profile, JournalEntry, BiblePassage
 
 
 @admin.register(ReadingPlan)
@@ -26,3 +26,10 @@ class JournalEntryAdmin(admin.ModelAdmin):
     list_display = ("user", "entry_date", "plan_day", "created_at")
     list_filter = ("user", "entry_date", "plan_day")
     search_fields = ("user__username", "scripture", "observation")
+
+
+@admin.register(BiblePassage)
+class BiblePassageAdmin(admin.ModelAdmin):
+    list_display = ("reference",)
+    search_fields = ("reference",)
+
