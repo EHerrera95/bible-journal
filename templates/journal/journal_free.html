@@ -1,0 +1,254 @@
+{% extends "journal/base.html" %}
+{% block title %}Free Journal Entry — Bible Journal{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1 class="page-title">{% if is_edit %}Edit{% else %}Write{% endif %} a Journal Entry</h1>
+    <p class="page-subtitle">{{ today|date:"l, F j, Y" }} &mdash; Free Form</p>
+</div>
+
+<!-- Passage Reference Input -->
+<div class="card" style="margin-bottom:1.5rem;">
+    <h2 class="card-title"><span class="icon">📖</span> Choose Your Passage</h2>
+
+    <div class="form-field">
+        <label for="id_passage_ref" style="font-family:'Crimson Pro',serif; font-size:0.8rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-muted); display:block; margin-bottom:0.4rem;">
+            Passage Reference
+        </label>
+        <input
+            type="text"
+            id="id_passage_ref"
+            name="passage_ref"
+            value="{{ form.passage_ref.value|default:'' }}"
+            placeholder="e.g. John 3:16-21  or  Romans 8"
+            style="width:100%; padding:0.65rem 0.9rem; background:var(--parchment); border:1px solid var(--parchment-mid); border-radius:var(--radius); font-family:'Lora',serif; font-size:0.95rem; color:var(--ink); outline:none; transition:border-color 0.2s, box-shadow 0.2s;"
+            onfocus="this.style.borderColor='var(--gold)'; this.style.boxShadow='0 0 0 2px rgba(181,134,46,0.2)'"
+            onblur="this.style.borderColor=''; this.style.boxShadow=''"
+        >
+        <p style="font-family:'Crimson Pro',serif; font-size:0.82rem; color:var(--ink-muted); margin-top:0.35rem; font-style:italic;">
+            Type a reference above, or use the browser below to select a book and chapter.
+        </p>
+    </div>
+
+    <!-- Passage Browser -->
+    <details id="passage-browser" style="margin-top:1rem;">
+        <summary style="font-family:'Crimson Pro',serif; font-size:0.85rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--gold); cursor:pointer; user-select:none; list-style:none; display:flex; align-items:center; gap:0.4rem;">
+            <span id="browser-arrow">▸</span> Browse by Book &amp; Chapter
+        </summary>
+
+        <div style="margin-top:1.25rem;">
+            <!-- Testament tabs -->
+            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                <button type="button" class="tab-btn active" id="tab-ot" onclick="showTestament('OT')">Old Testament</button>
+                <button type="button" class="tab-btn" id="tab-nt" onclick="showTestament('NT')">New Testament</button>
+            </div>
+
+            <!-- Book list -->
+            <div id="book-grid" style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1rem;"></div>
+
+            <!-- Chapter list (shown after book selected) -->
+            <div id="chapter-area" style="display:none;">
+                <p style="font-family:'Crimson Pro',serif; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-muted); margin-bottom:0.5rem;">Chapter</p>
+                <div id="chapter-grid" style="display:flex; flex-wrap:wrap; gap:0.4rem;"></div>
+            </div>
+        </div>
+    </details>
+</div>
+
+<!-- SOAP Form -->
+<form method="post" id="soap-form">
+    {% csrf_token %}
+    <!-- hidden passage_ref duplicated so the form still submits it -->
+    <input type="hidden" name="passage_ref" id="form-passage-ref" value="{{ form.passage_ref.value|default:'' }}">
+
+    <div class="soap-form">
+        <div class="soap-field">
+            <label class="soap-label" for="{{ form.scripture.id_for_label }}">
+                <span class="soap-letter">S</span> Scripture
+            </label>
+            <textarea name="{{ form.scripture.html_name }}" id="{{ form.scripture.id_for_label }}" placeholder="Write out the verse or passage that stood out to you…">{{ form.scripture.value|default:'' }}</textarea>
+        </div>
+
+        <div class="soap-field">
+            <label class="soap-label" for="{{ form.observation.id_for_label }}">
+                <span class="soap-letter">O</span> Observation
+            </label>
+            <textarea name="{{ form.observation.html_name }}" id="{{ form.observation.id_for_label }}" placeholder="What do you notice about this passage?">{{ form.observation.value|default:'' }}</textarea>
+        </div>
+
+        <div class="soap-field">
+            <label class="soap-label" for="{{ form.application.id_for_label }}">
+                <span class="soap-letter">A</span> Application
+            </label>
+            <textarea name="{{ form.application.html_name }}" id="{{ form.application.id_for_label }}" placeholder="How does this apply to your life today?">{{ form.application.value|default:'' }}</textarea>
+        </div>
+
+        <div class="soap-field">
+            <label class="soap-label" for="{{ form.prayer.id_for_label }}">
+                <span class="soap-letter">P</span> Prayer
+            </label>
+            <textarea name="{{ form.prayer.html_name }}" id="{{ form.prayer.id_for_label }}" placeholder="Write a short prayer in response to what you've read…">{{ form.prayer.value|default:'' }}</textarea>
+        </div>
+    </div>
+
+    <div class="action-row" style="margin-top:2rem;">
+        <button type="submit" class="btn btn-gold">
+            {% if is_edit %}Update Entry{% else %}Save Entry{% endif %}
+        </button>
+        <a href="{% url 'today' %}" class="btn btn-ghost">Cancel</a>
+    </div>
+</form>
+
+<a class="back-link" href="{% url 'today' %}">← Back to Today</a>
+
+<style>
+.tab-btn {
+    font-family:'Crimson Pro',serif;
+    font-size:0.82rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:0.3rem 0.9rem;
+    border:1px solid var(--parchment-mid);
+    border-radius:20px;
+    background:transparent;
+    color:var(--ink-muted);
+    cursor:pointer;
+    transition:all 0.15s;
+}
+.tab-btn.active {
+    background:var(--ink);
+    color:var(--parchment);
+    border-color:var(--ink);
+}
+.book-btn {
+    font-family:'Crimson Pro',serif;
+    font-size:0.82rem;
+    padding:0.25rem 0.65rem;
+    border:1px solid var(--parchment-mid);
+    border-radius:var(--radius);
+    background:var(--parchment);
+    color:var(--ink-soft);
+    cursor:pointer;
+    transition:all 0.15s;
+    white-space:nowrap;
+}
+.book-btn:hover, .book-btn.selected {
+    background:var(--gold);
+    border-color:var(--gold);
+    color:white;
+}
+.chap-btn {
+    font-family:'Crimson Pro',serif;
+    font-size:0.82rem;
+    width:2.2rem;
+    height:2.2rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:1px solid var(--parchment-mid);
+    border-radius:var(--radius);
+    background:var(--parchment);
+    color:var(--ink-soft);
+    cursor:pointer;
+    transition:all 0.15s;
+}
+.chap-btn:hover, .chap-btn.selected {
+    background:var(--gold);
+    border-color:var(--gold);
+    color:white;
+}
+details[open] #browser-arrow { transform:rotate(90deg); }
+#browser-arrow { display:inline-block; transition:transform 0.2s; }
+</style>
+
+<script>
+const BOOKS = {{ books_json|safe }};
+const OT = BOOKS.filter(b => b.testament === "OT");
+const NT = BOOKS.filter(b => b.testament === "NT");
+
+let currentTestament = "OT";
+let selectedBook = null;
+let selectedChapter = null;
+
+{% if prefill_book %}
+selectedBook = BOOKS.find(b => b.id === "{{ prefill_book }}") || null;
+{% endif %}
+{% if prefill_chap %}
+selectedChapter = parseInt("{{ prefill_chap }}") || null;
+{% endif %}
+
+function showTestament(t) {
+    currentTestament = t;
+    selectedBook = null;
+    selectedChapter = null;
+    document.getElementById("tab-ot").classList.toggle("active", t === "OT");
+    document.getElementById("tab-nt").classList.toggle("active", t === "NT");
+    renderBooks();
+    document.getElementById("chapter-area").style.display = "none";
+}
+
+function renderBooks() {
+    const books = currentTestament === "OT" ? OT : NT;
+    const grid = document.getElementById("book-grid");
+    grid.innerHTML = "";
+    books.forEach(book => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "book-btn" + (selectedBook && selectedBook.id === book.id ? " selected" : "");
+        btn.textContent = book.name;
+        btn.onclick = () => selectBook(book);
+        grid.appendChild(btn);
+    });
+}
+
+function selectBook(book) {
+    selectedBook = book;
+    selectedChapter = null;
+    renderBooks();
+    renderChapters();
+    document.getElementById("chapter-area").style.display = "block";
+}
+
+function renderChapters() {
+    const grid = document.getElementById("chapter-grid");
+    grid.innerHTML = "";
+    for (let ch = 1; ch <= selectedBook.chapters; ch++) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chap-btn" + (selectedChapter === ch ? " selected" : "");
+        btn.textContent = ch;
+        btn.onclick = () => selectChapter(ch);
+        grid.appendChild(btn);
+    }
+}
+
+function selectChapter(ch) {
+    selectedChapter = ch;
+    renderChapters();
+    // Update the passage_ref field
+    const ref = `${selectedBook.name} ${ch}`;
+    document.getElementById("id_passage_ref").value = ref;
+    document.getElementById("form-passage-ref").value = ref;
+}
+
+// Keep hidden input in sync with visible text input
+document.getElementById("id_passage_ref").addEventListener("input", function() {
+    document.getElementById("form-passage-ref").value = this.value;
+});
+
+// Open browser if prefilled from URL params
+{% if prefill_book and prefill_chap %}
+document.getElementById("passage-browser").open = true;
+if (selectedBook) {
+    currentTestament = selectedBook.testament;
+    renderBooks();
+    renderChapters();
+    document.getElementById("chapter-area").style.display = "block";
+}
+{% else %}
+renderBooks();
+{% endif %}
+</script>
+
+{% endblock %}

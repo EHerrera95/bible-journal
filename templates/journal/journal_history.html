@@ -1,51 +1,183 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Journal History - Bible Journal</title>
-</head>
-<body>
-    <h1>Journal History (Last 7 Days)</h1>
+{% extends "journal/base.html" %}
+{% block title %}Journal History — Bible Journal{% endblock %}
 
-    {% if entries %}
-        <table border="1" cellpadding="6">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Plan</th>
-                    <th>Day #</th>
-                    <th>Scripture (S)</th>
-                    <th>Observation (O)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for entry in entries %}
-                    <tr>
-                        <td>{{ entry.entry_date }}</td>
-                        <td>
-                            {% if entry.plan_day %}
-                                {{ entry.plan_day.plan.name }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if entry.plan_day %}
-                                {{ entry.plan_day.day_number }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </td>
-                        <td>{{ entry.scripture|truncatechars:80 }}</td>
-                        <td>{{ entry.observation|truncatechars:80 }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>You don’t have any journal entries yet.</p>
-    {% endif %}
+{% block content %}
 
-    <p><a href="{% url 'today' %}">&larr; Back to Today</a></p>
-</body>
-</html>
+<div class="page-header">
+    <h1 class="page-title">Journal History</h1>
+    <p class="page-subtitle">{{ total }} entr{% if total == 1 %}y{% else %}ies{% endif %} total</p>
+</div>
+
+<!-- Backfill prompt -->
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:0.75rem;">
+    <p style="font-family:'Crimson Pro',serif; font-size:0.9rem; color:var(--ink-muted); font-style:italic;">
+        Click any row to view or edit the full entry.
+    </p>
+    <div style="display:flex; align-items:center; gap:0.6rem;">
+        <label style="font-family:'Crimson Pro',serif; font-size:0.8rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-muted);">
+            Backfill a past date:
+        </label>
+        <input
+            type="date"
+            id="backfill-date"
+            max="{% now 'Y-m-d' %}"
+            style="font-family:'Lora',serif; font-size:0.85rem; padding:0.3rem 0.6rem; border:1px solid var(--parchment-mid); border-radius:var(--radius); background:var(--parchment); color:var(--ink); outline:none;"
+            onfocus="this.style.borderColor='var(--gold)'"
+            onblur="this.style.borderColor=''"
+        >
+        <button onclick="goBackfill()" class="btn btn-gold" style="font-size:0.85rem; padding:0.4rem 1rem;">Go</button>
+    </div>
+</div>
+
+{% if page_obj %}
+
+<div class="card" style="padding:0; overflow:hidden;">
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th style="width:110px;">Date</th>
+                <th style="width:140px;">Passage</th>
+                <th>Scripture (S)</th>
+                <th>Observation (O)</th>
+                <th>Application (A)</th>
+                <th>Prayer (P)</th>
+                <th style="width:60px;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in page_obj %}
+            <tr class="entry-row" onclick="window.location='{% url 'journal_entry' entry.entry_date|date:'Y-m-d' %}'" style="cursor:pointer;">
+                <td class="date-cell">
+                    {{ entry.entry_date|date:"M j, Y" }}
+                    {% if entry.journal_type == 'free' %}
+                        <span class="type-badge free">Free</span>
+                    {% else %}
+                        <span class="type-badge plan">Plan</span>
+                    {% endif %}
+                </td>
+                <td class="passage-cell">
+                    <span title="{{ entry.display_passage }}">
+                        {{ entry.display_passage|truncatechars:30 }}
+                    </span>
+                </td>
+                <td class="soap-cell">{{ entry.scripture|truncatechars:60 }}</td>
+                <td class="soap-cell">{{ entry.observation|truncatechars:60 }}</td>
+                <td class="soap-cell">{{ entry.application|truncatechars:60 }}</td>
+                <td class="soap-cell">{{ entry.prayer|truncatechars:60 }}</td>
+                <td style="text-align:center; color:var(--ink-muted); font-size:0.8rem;">→</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="pagination-row">
+    <span class="page-info">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    </span>
+    <div style="display:flex; gap:0.5rem;">
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-ghost" style="font-size:0.85rem; padding:0.4rem 1rem;">← Previous</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" class="btn btn-ghost" style="font-size:0.85rem; padding:0.4rem 1rem;">Next →</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">📓</div>
+        <p>No journal entries yet.</p>
+        <div style="margin-top:1.5rem; display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">
+            <a href="{% url 'journal_free' %}" class="btn btn-gold">Write today's entry</a>
+            <a href="{% url 'journal_backfill' %}" class="btn btn-ghost">Add a past entry</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<a class="back-link" href="{% url 'today' %}">← Back to Today</a>
+
+<style>
+/* Override the base history-table for the wider layout */
+.history-table { table-layout: fixed; }
+
+.history-table thead th {
+    background: var(--parchment-dark);
+}
+
+.entry-row:hover td { background: var(--gold-pale); }
+
+.passage-cell {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.82rem;
+    font-style: italic;
+    color: var(--ink-soft);
+    vertical-align: top;
+    padding-top: 0.9rem;
+}
+
+.soap-cell {
+    font-family: 'Lora', serif;
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+    vertical-align: top;
+    padding-top: 0.9rem;
+    line-height: 1.5;
+}
+
+.type-badge {
+    display: inline-block;
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.1rem 0.4rem;
+    border-radius: 10px;
+    margin-top: 0.2rem;
+    display: block;
+}
+.type-badge.free { background: var(--gold-pale); color: var(--gold); }
+.type-badge.plan { background: var(--parchment-mid); color: var(--ink-muted); }
+
+.pagination-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+.page-info {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+}
+
+/* Responsive — collapse to 3 cols on small screens */
+@media (max-width: 700px) {
+    .history-table thead th:nth-child(5),
+    .history-table thead th:nth-child(6),
+    .history-table tbody td:nth-child(5),
+    .history-table tbody td:nth-child(6) {
+        display: none;
+    }
+}
+</style>
+
+<script>
+function goBackfill() {
+    const d = document.getElementById("backfill-date").value;
+    if (d) window.location = `/journal/entry/${d}/`;
+}
+document.getElementById("backfill-date").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") goBackfill();
+});
+</script>
+
+{% endblock %}

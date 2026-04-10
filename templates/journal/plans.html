@@ -1,0 +1,223 @@
+{% extends "journal/base.html" %}
+{% block title %}Reading Plans — Bible Journal{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1 class="page-title">Reading Plans</h1>
+    <p class="page-subtitle">Choose a plan that fits where you are</p>
+</div>
+
+<!-- Curated Plans -->
+<h2 style="font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--ink); margin-bottom:1rem;">
+    Curated Plans
+</h2>
+
+{% if plans %}
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:1.25rem; margin-bottom:3rem;">
+    {% for plan in plans %}
+    <div class="plan-select-card {% if current_plan and current_plan.id == plan.id %}active{% endif %}">
+        <div class="plan-select-header">
+            <span class="plan-select-length">{{ plan.day_count }} days</span>
+            {% if current_plan and current_plan.id == plan.id %}
+                <span class="plan-active-badge">✓ Active</span>
+            {% endif %}
+        </div>
+        <h3 class="plan-select-name">{{ plan.name }}</h3>
+        <p class="plan-select-desc">{{ plan.description }}</p>
+
+        <form method="post" action="{% url 'select_plan' %}" style="margin-top:1.25rem;">
+            {% csrf_token %}
+            <input type="hidden" name="plan_id" value="{{ plan.id }}">
+            <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                <label style="font-family:'Crimson Pro',serif; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-muted);">
+                    Start date
+                </label>
+                <input
+                    type="date"
+                    name="start_date"
+                    value="{% now 'Y-m-d' %}"
+                    style="font-family:'Lora',serif; font-size:0.85rem; padding:0.3rem 0.6rem; border:1px solid var(--parchment-mid); border-radius:var(--radius); background:var(--cream); color:var(--ink); outline:none;"
+                    onfocus="this.style.borderColor='var(--gold)'"
+                    onblur="this.style.borderColor=''"
+                >
+            </div>
+            <button type="submit" class="btn {% if current_plan and current_plan.id == plan.id %}btn-ghost{% else %}btn-gold{% endif %}" style="margin-top:0.9rem; font-size:0.88rem; padding:0.5rem 1.2rem;">
+                {% if current_plan and current_plan.id == plan.id %}Switch Start Date{% else %}Start This Plan{% endif %}
+            </button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card" style="margin-bottom:2rem;">
+    <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <p>No plans seeded yet.</p>
+        <p style="margin-top:0.5rem; font-size:0.85rem;">Run <code style="background:var(--parchment-mid); padding:0.1rem 0.4rem; border-radius:3px; font-family:monospace;">python manage.py seed_plans</code> to load them.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Book-by-Book -->
+<div class="divider">✦</div>
+
+<h2 style="font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--ink); margin-bottom:0.4rem;">
+    Book by Book
+</h2>
+<p style="font-family:'Lora',serif; font-size:0.9rem; color:var(--ink-muted); font-style:italic; margin-bottom:1.25rem;">
+    Pick a single book of the Bible and read one chapter a day.
+</p>
+
+<div class="card">
+    <form method="post" action="{% url 'select_plan' %}">
+        {% csrf_token %}
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-bottom:1.25rem;">
+            <div>
+                <label style="font-family:'Crimson Pro',serif; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-muted); display:block; margin-bottom:0.4rem;">
+                    Old Testament
+                </label>
+                <select name="book_id" id="book-select-ot" class="book-select" onchange="syncSelect('ot')">
+                    <option value="">— Choose a book —</option>
+                    {% for book in bible_books %}
+                        {% if book.testament == "OT" %}
+                        <option value="{{ book.id }}">{{ book.name }} ({{ book.verses|length }} ch)</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="font-family:'Crimson Pro',serif; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-muted); display:block; margin-bottom:0.4rem;">
+                    New Testament
+                </label>
+                <select name="book_id" id="book-select-nt" class="book-select" onchange="syncSelect('nt')">
+                    <option value="">— Choose a book —</option>
+                    {% for book in bible_books %}
+                        {% if book.testament == "NT" %}
+                        <option value="{{ book.id }}">{{ book.name }} ({{ book.verses|length }} ch)</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <input type="hidden" name="book_id" id="book-id-hidden" value="">
+
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem;">
+            <label style="font-family:'Crimson Pro',serif; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-muted);">
+                Start date
+            </label>
+            <input
+                type="date"
+                name="start_date"
+                value="{% now 'Y-m-d' %}"
+                style="font-family:'Lora',serif; font-size:0.85rem; padding:0.3rem 0.6rem; border:1px solid var(--parchment-mid); border-radius:var(--radius); background:var(--cream); color:var(--ink); outline:none;"
+                onfocus="this.style.borderColor='var(--gold)'"
+                onblur="this.style.borderColor=''"
+            >
+        </div>
+
+        <button type="submit" class="btn btn-gold" id="book-submit" disabled style="opacity:0.5; font-size:0.88rem; padding:0.5rem 1.2rem;">
+            Start Book-by-Book Plan
+        </button>
+    </form>
+</div>
+
+<a class="back-link" href="{% url 'today' %}">← Back to Today</a>
+
+<style>
+.plan-select-card {
+    background: var(--parchment);
+    border: 1px solid var(--parchment-mid);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+.plan-select-card:hover { box-shadow: var(--shadow-md); }
+.plan-select-card.active { border-color: var(--gold); border-left: 3px solid var(--gold); }
+
+.plan-select-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+.plan-select-length {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+}
+.plan-active-badge {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.75rem;
+    color: var(--gold);
+    font-weight: 600;
+}
+.plan-select-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 0.6rem;
+    line-height: 1.3;
+}
+.plan-select-desc {
+    font-family: 'Lora', serif;
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    font-style: italic;
+    line-height: 1.6;
+    flex: 1;
+}
+.book-select {
+    width: 100%;
+    font-family: 'Lora', serif;
+    font-size: 0.88rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--parchment-mid);
+    border-radius: var(--radius);
+    background: var(--cream);
+    color: var(--ink);
+    outline: none;
+    cursor: pointer;
+}
+.book-select:focus { border-color: var(--gold); }
+</style>
+
+<script>
+// Keep the two selects mutually exclusive and sync the hidden input
+function syncSelect(which) {
+    const ot = document.getElementById("book-select-ot");
+    const nt = document.getElementById("book-select-nt");
+    const hidden = document.getElementById("book-id-hidden");
+    const btn = document.getElementById("book-submit");
+
+    if (which === "ot" && ot.value) {
+        nt.value = "";
+        hidden.value = ot.value;
+    } else if (which === "nt" && nt.value) {
+        ot.value = "";
+        hidden.value = nt.value;
+    } else {
+        hidden.value = "";
+    }
+
+    const hasSelection = hidden.value !== "";
+    btn.disabled = !hasSelection;
+    btn.style.opacity = hasSelection ? "1" : "0.5";
+}
+
+// Remove the duplicate name="book_id" from the visible selects on submit
+// so only the hidden input is submitted
+document.querySelector("form:last-of-type").addEventListener("submit", function() {
+    document.getElementById("book-select-ot").removeAttribute("name");
+    document.getElementById("book-select-nt").removeAttribute("name");
+});
+</script>
+
+{% endblock %}

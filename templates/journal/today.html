@@ -1,69 +1,98 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "journal/base.html" %}
+{% block title %}Today — Bible Journal{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <title>Today - Bible Journal</title>
-</head>
+{% block content %}
 
-<body>
-    <h1>Today’s Reading</h1>
+<div class="page-header">
+    <h1 class="page-title">Today's Reading</h1>
+    <p class="page-subtitle">{{ today|date:"l, F j, Y" }}</p>
+</div>
 
-    <p><strong>Date:</strong> {{ today }}</p>
+{% if user.is_authenticated %}
 
-    {% if user.is_authenticated %}
-    {% if has_plan %}
-    {% if plan_day %}
-    <h2>Plan: {{ plan_day.plan.name }}</h2>
-    <p><strong>Day:</strong> {{ day_number }}</p>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:2rem;">
 
-    <h3>Passages</h3>
-    <p>{{ plan_day.passages }}</p>
+        <!-- Plan-based -->
+        <div class="card" style="margin-bottom:0;">
+            <h2 class="card-title"><span class="icon">📋</span> Reading Plan</h2>
+            {% if has_plan and plan_day %}
+                <p class="plan-label" style="margin-bottom:0.25rem;">{{ plan_day.plan.name }} &mdash; Day {{ day_number }}</p>
+                <p class="passage-ref" style="font-size:0.95rem; margin-bottom:1rem;">{{ plan_day.passages }}</p>
+                <a href="{% url 'journal_today' %}" class="btn btn-primary" style="font-size:0.9rem; padding:0.5rem 1.1rem;">
+                    {% if today_entry and today_entry.journal_type == 'plan' %}✏️ Edit Entry{% else %}✍️ Write Entry{% endif %}
+                </a>
+            {% elif has_plan %}
+                <p style="font-family:'Crimson Pro',serif; font-size:0.9rem; color:var(--ink-muted); font-style:italic; margin-bottom:1rem;">No reading defined for day {{ day_number }}.</p>
+                <a href="{% url 'plans' %}" class="btn btn-ghost" style="font-size:0.85rem; padding:0.45rem 1rem;">Switch Plan</a>
+            {% else %}
+                <p style="font-family:'Crimson Pro',serif; font-size:0.9rem; color:var(--ink-muted); font-style:italic; margin-bottom:1rem;">No plan selected yet.</p>
+                <a href="{% url 'plans' %}" class="btn btn-gold" style="font-size:0.88rem; padding:0.5rem 1.1rem;">Browse Plans</a>
+            {% endif %}
+        </div>
 
-    <h3>Key Verse</h3>
-    <p>{{ plan_day.key_verse_ref }}</p>
+        <!-- Free form -->
+        <div class="card" style="margin-bottom:0; border-left:3px solid var(--gold);">
+            <h2 class="card-title"><span class="icon">✍️</span> Free Form</h2>
+            <p style="font-family:'Crimson Pro',serif; font-size:0.9rem; color:var(--ink-muted); margin-bottom:1rem;">
+                Pick any passage — type it or browse by book &amp; chapter.
+            </p>
+            <a href="{% url 'journal_free' %}" class="btn btn-gold" style="font-size:0.9rem; padding:0.5rem 1.1rem;">
+                {% if today_entry and today_entry.journal_type == 'free' %}✏️ Edit Entry{% else %}📖 Choose a Passage{% endif %}
+            </a>
+        </div>
 
-    <hr>
-    <h2>Yesterday’s Entry</h2>
+    </div>
 
-    {% if yesterday_entry %}
-    <p><strong>Date:</strong> {{ yesterday_entry.entry_date }}</p>
-    <p><strong>Scripture:</strong> {{ yesterday_entry.scripture|truncatechars:120 }}</p>
-    <p><strong>Observation:</strong> {{ yesterday_entry.observation|truncatechars:120 }}</p>
-    <p>
-        <a href="{% url 'journal_history' %}">View recent history</a>
-    </p>
-    {% else %}
-    <p>No entry for yesterday yet.</p>
+    {% if has_plan and plan_day %}
+    <div class="plan-card">
+        <p class="plan-label">Today's Key Verse</p>
+        <div class="key-verse-block" style="margin-top:0.5rem;">{{ plan_day.key_verse_ref }}</div>
+    </div>
     {% endif %}
 
-    <hr>
-    <p>
-        <a href="{% url 'journal_today' %}">Write / Edit Today’s SOAP</a>
-    </p>
+    <div class="action-row" style="margin-bottom:1.5rem;">
+        <a href="{% url 'progress' %}" class="btn btn-ghost" style="font-size:0.9rem;">📊 Reading Progress</a>
+        <a href="{% url 'plans' %}" class="btn btn-ghost" style="font-size:0.9rem;">📋 Reading Plans</a>
+        <a href="{% url 'journal_history' %}" class="btn btn-ghost" style="font-size:0.9rem;">📓 History</a>
+    </div>
 
-    <p>
-        <a href="{% url 'journal_history' %}">See last 7 entries</a>
-    </p>
+    <div class="divider">✦</div>
 
-    {% else %}
-    <p>
-        You’re on day {{ day_number }} of your plan,
-        but there’s no reading defined for this day yet.
-    </p>
-    {% endif %}
-    {% else %}
-    <p>You haven’t selected a reading plan or start date yet.</p>
-    <p>(Later: we’ll add a “Pick a plan” page and link to it here.)</p>
-    {% endif %}
-    {% else %}
-    <p>Please <a href="/admin/login/">log in</a> to see today’s reading.</p>
-    {% endif %}
+    <div class="card">
+        <h2 class="card-title"><span class="icon">🕯</span> Yesterday's Reflection</h2>
+        {% if yesterday_entry %}
+            <p style="font-family:'Crimson Pro',serif; font-size:0.8rem; color:var(--ink-muted); margin-bottom:0.75rem;">
+                {{ yesterday_entry.entry_date|date:"F j, Y" }}
+                {% if yesterday_entry.display_passage %}&mdash; <em>{{ yesterday_entry.display_passage }}</em>{% endif %}
+            </p>
+            <span class="snippet-label">Scripture</span>
+            <p class="snippet">{{ yesterday_entry.scripture|truncatechars:200 }}</p>
+            <div style="margin-top:1rem;">
+                <span class="snippet-label">Observation</span>
+                <p class="snippet">{{ yesterday_entry.observation|truncatechars:200 }}</p>
+            </div>
+            <div style="margin-top:1.25rem;">
+                <a href="{% url 'journal_history' %}" class="back-link">View full history →</a>
+            </div>
+        {% else %}
+            <div class="empty-state" style="padding:1.5rem 0;">
+                <p>No entry for yesterday.</p>
+            </div>
+        {% endif %}
+    </div>
 
-<form method="post" action="{% url 'logout' %}" style="display:inline;">
-    {% csrf_token %}
-    <button type="submit">Log out</button>
-</form>
-</body>
+{% else %}
+    <div class="card">
+        <p style="text-align:center; font-family:'Crimson Pro',serif;">
+            Please <a href="{% url 'login' %}">log in</a> to see today's reading.
+        </p>
+    </div>
+{% endif %}
 
-</html>
+<style>
+@media (max-width: 550px) {
+    div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+}
+</style>
+
+{% endblock %}

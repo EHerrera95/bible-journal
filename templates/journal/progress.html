@@ -1,0 +1,167 @@
+{% extends "journal/base.html" %}
+{% block title %}Reading Progress — Bible Journal{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1 class="page-title">Reading Progress</h1>
+    <p class="page-subtitle">Your journey through Scripture</p>
+</div>
+
+<div class="card" style="margin-bottom:2rem;">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <p style="font-family:'Crimson Pro',serif; font-size:0.8rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-muted); margin-bottom:0.25rem;">Overall Progress</p>
+            <p style="font-family:'Playfair Display',serif; font-size:1.6rem; font-weight:700; color:var(--ink);">
+                <span id="total-read">{{ read_chapters }}</span>
+                <span style="color:var(--ink-muted); font-size:1rem; font-weight:400;">/ {{ total_chapters }} chapters</span>
+            </p>
+        </div>
+        <div style="text-align:right;">
+            <p style="font-family:'Playfair Display',serif; font-size:2rem; font-weight:700; color:var(--gold);" id="overall-pct">{{ overall_pct }}%</p>
+            <p style="font-family:'Crimson Pro',serif; font-size:0.85rem; color:var(--ink-muted);">of the Bible read</p>
+        </div>
+    </div>
+    <div style="margin-top:1.25rem; height:8px; background:var(--parchment-mid); border-radius:4px; overflow:hidden;">
+        <div id="overall-bar" style="height:100%; width:{{ overall_pct }}%; background:linear-gradient(90deg, var(--gold), var(--gold-light)); border-radius:4px; transition:width 0.4s;"></div>
+    </div>
+</div>
+
+<div style="display:flex; gap:1.5rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items:center;">
+    <div style="display:flex; align-items:center; gap:0.4rem; font-family:'Crimson Pro',serif; font-size:0.85rem; color:var(--ink-muted);">
+        <span style="display:inline-block; width:14px; height:14px; border-radius:2px; background:var(--gold);"></span> Read
+    </div>
+    <div style="display:flex; align-items:center; gap:0.4rem; font-family:'Crimson Pro',serif; font-size:0.85rem; color:var(--ink-muted);">
+        <span style="display:inline-block; width:14px; height:14px; border-radius:2px; background:var(--parchment-mid);"></span> Unread
+    </div>
+    <div style="margin-left:auto; font-family:'Crimson Pro',serif; font-size:0.82rem; color:var(--ink-muted); font-style:italic;">
+        Click to mark read · click again to unmark
+    </div>
+</div>
+
+<h2 style="font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--ink); margin-bottom:1.25rem; padding-bottom:0.5rem; border-bottom:1px solid var(--rule);">Old Testament</h2>
+<div class="book-grid-outer">
+{% for book in ot_books %}
+    <div class="book-block" id="block-{{ book.id }}">
+        <div class="book-block-header">
+            <span class="book-block-name">{{ book.name }}</span>
+            <span class="book-block-pct {% if book.complete %}complete{% endif %}" id="pct-{{ book.id }}">{{ book.pct }}%</span>
+        </div>
+        <div class="chapter-dots">
+            {% for ch in book.chapters %}
+            <button type="button"
+                class="dot {% if ch.read %}dot-read{% endif %}"
+                data-book="{{ book.id }}"
+                data-chapter="{{ ch.number }}"
+                data-read="{{ ch.read|yesno:'true,false' }}"
+                title="{{ book.name }} {{ ch.number }}"
+                onclick="toggleChapter(this)">{{ ch.number }}</button>
+            {% endfor %}
+        </div>
+    </div>
+{% endfor %}
+</div>
+
+<h2 style="font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--ink); margin-top:2.5rem; margin-bottom:1.25rem; padding-bottom:0.5rem; border-bottom:1px solid var(--rule);">New Testament</h2>
+<div class="book-grid-outer">
+{% for book in nt_books %}
+    <div class="book-block" id="block-{{ book.id }}">
+        <div class="book-block-header">
+            <span class="book-block-name">{{ book.name }}</span>
+            <span class="book-block-pct {% if book.complete %}complete{% endif %}" id="pct-{{ book.id }}">{{ book.pct }}%</span>
+        </div>
+        <div class="chapter-dots">
+            {% for ch in book.chapters %}
+            <button type="button"
+                class="dot {% if ch.read %}dot-read{% endif %}"
+                data-book="{{ book.id }}"
+                data-chapter="{{ ch.number }}"
+                data-read="{{ ch.read|yesno:'true,false' }}"
+                title="{{ book.name }} {{ ch.number }}"
+                onclick="toggleChapter(this)">{{ ch.number }}</button>
+            {% endfor %}
+        </div>
+    </div>
+{% endfor %}
+</div>
+
+<div class="divider" style="margin-top:3rem;">✦</div>
+<p style="text-align:center; font-family:'Crimson Pro',serif; font-size:0.95rem; color:var(--ink-muted);">
+    Want to journal on a specific passage? <a href="{% url 'journal_free' %}" style="color:var(--rust);">Open a free-form entry →</a>
+</p>
+
+<form id="csrf-form" style="display:none;">{% csrf_token %}</form>
+
+<style>
+.book-grid-outer { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; }
+.book-block { background:var(--parchment); border:1px solid var(--parchment-mid); border-radius:var(--radius-lg); padding:0.9rem 1rem; box-shadow:var(--shadow-sm); }
+.book-block-header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.6rem; }
+.book-block-name { font-family:'Playfair Display',serif; font-size:0.9rem; font-weight:600; color:var(--ink); }
+.book-block-pct { font-family:'Crimson Pro',serif; font-size:0.78rem; color:var(--ink-muted); }
+.book-block-pct.complete { color:var(--gold); font-weight:600; }
+.chapter-dots { display:flex; flex-wrap:wrap; gap:3px; }
+.dot { width:22px; height:22px; border-radius:3px; border:1px solid var(--parchment-mid); background:var(--cream); color:var(--ink-muted); font-family:'Crimson Pro',serif; font-size:0.65rem; cursor:pointer; transition:background 0.15s, border-color 0.15s, transform 0.1s; display:flex; align-items:center; justify-content:center; padding:0; }
+.dot:hover { border-color:var(--gold); transform:scale(1.15); }
+.dot-read { background:var(--gold); border-color:var(--gold); color:white; }
+.dot-read:hover { background:var(--rust); border-color:var(--rust); }
+</style>
+
+<script>
+const CSRF     = document.querySelector("#csrf-form [name=csrfmiddlewaretoken]").value;
+const MARK_URL = "{% url 'mark_read' %}";
+const TOTAL    = {{ total_chapters }};
+
+async function toggleChapter(btn) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+
+    const bookId  = btn.dataset.book;
+    const chapter = btn.dataset.chapter;
+    const wasRead = btn.dataset.read === "true";
+    const action  = wasRead ? "unmark" : "mark";
+
+    // Optimistic update
+    btn.dataset.read = wasRead ? "false" : "true";
+    btn.classList.toggle("dot-read", !wasRead);
+    updateBookPct(bookId);
+    updateOverall();
+
+    try {
+        const res = await fetch(MARK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `csrfmiddlewaretoken=${CSRF}&book_id=${bookId}&chapter=${chapter}&action=${action}`,
+        });
+        if (!res.ok) throw new Error("Server error");
+    } catch {
+        // Revert on failure
+        btn.dataset.read = wasRead ? "true" : "false";
+        btn.classList.toggle("dot-read", wasRead);
+        updateBookPct(bookId);
+        updateOverall();
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function updateBookPct(bookId) {
+    const block = document.getElementById("block-" + bookId);
+    const dots  = block.querySelectorAll(".dot");
+    const read  = [...dots].filter(d => d.dataset.read === "true").length;
+    const pct   = Math.round(100 * read / dots.length);
+    const label = document.getElementById("pct-" + bookId);
+    label.textContent = pct + "%";
+    label.classList.toggle("complete", pct === 100);
+}
+
+function updateOverall() {
+    const all  = document.querySelectorAll(".dot");
+    const read = [...all].filter(d => d.dataset.read === "true").length;
+    const pct  = Math.round(100 * read / TOTAL);
+    document.getElementById("total-read").textContent  = read;
+    document.getElementById("overall-pct").textContent = pct + "%";
+    document.getElementById("overall-bar").style.width = pct + "%";
+}
+</script>
+
+{% endblock %}

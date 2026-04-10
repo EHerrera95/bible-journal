@@ -1,27 +1,45 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Log in - Bible Journal</title>
-</head>
-<body>
-    <h1>Log in</h1>
+{% extends "journal/base.html" %}
+{% block title %}Log in — Bible Journal{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+    <div class="page-header" style="text-align:center;">
+        <h1 class="page-title">Welcome back</h1>
+        <p class="page-subtitle">Log in to continue your reading</p>
+    </div>
 
     {% if form.errors %}
-        <p style="color: red;">Invalid username or password. Please try again.</p>
+        <div class="alert alert-error">
+            Invalid username or password. Please try again.
+        </div>
     {% endif %}
 
-    <form method="post" action="">
-        {% csrf_token %}
-        <table>
-            {{ form.as_table }}
-        </table>
-        {% if next %}
-            <input type="hidden" name="next" value="{{ next }}">
-        {% endif %}
-        <button type="submit">Log in</button>
-    </form>
+    <div class="card">
+        <form method="post" action="">
+            {% csrf_token %}
 
-    <p><a href="{% url 'home' %}">&larr; Back to Home</a></p>
-</body>
-</html>
+            <div class="form-field">
+                <label for="id_username">Username</label>
+                <input type="text" name="username" id="id_username" autocomplete="username" autofocus>
+            </div>
+
+            <div class="form-field">
+                <label for="id_password">Password</label>
+                <input type="password" name="password" id="id_password" autocomplete="current-password">
+            </div>
+
+            {% if next %}
+                <input type="hidden" name="next" value="{{ next }}">
+            {% endif %}
+
+            <div style="margin-top:1.5rem;">
+                <button type="submit" class="btn btn-primary" style="width:100%; text-align:center;">Log in</button>
+            </div>
+        </form>
+    </div>
+
+    <p style="text-align:center;">
+        <a class="back-link" href="{% url 'home' %}">← Back to Home</a>
+    </p>
+</div>
+{% endblock %}

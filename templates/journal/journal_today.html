@@ -1,36 +1,82 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Today’s SOAP - Bible Journal</title>
-</head>
-<body>
-    <h1>Today’s SOAP Entry</h1>
+{% extends "journal/base.html" %}
+{% block title %}Today's SOAP — Bible Journal{% endblock %}
 
-    <p><strong>Date:</strong> {{ today }}</p>
-    <p><strong>Plan:</strong> {{ plan_day.plan.name }}</p>
-    <p><strong>Day:</strong> {{ day_number }}</p>
+{% block content %}
 
-    <h3>Passages</h3>
-    <p>{{ plan_day.passages }}</p>
+<div class="page-header">
+    <h1 class="page-title">{% if is_edit %}Edit{% else %}Write{% endif %} Today's SOAP</h1>
+    <p class="page-subtitle">{{ today|date:"l, F j, Y" }} &mdash; {{ plan_day.plan.name }}, Day {{ day_number }}</p>
+</div>
 
-    <h3>Key Verse</h3>
-    <p>{{ plan_day.key_verse_ref }}</p>
+<!-- Passage reminder -->
+<div class="plan-card" style="margin-bottom:2rem;">
+    <p class="plan-label">Today's Passages</p>
+    <p class="passage-ref">{{ plan_day.passages }}</p>
+    <div class="key-verse-block" style="margin-top:0.75rem;">
+        <span style="font-family:'Crimson Pro',serif; font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); font-style:normal; display:block; margin-bottom:0.25rem;">Key Verse</span>
+        {{ plan_day.key_verse_ref }}
+    </div>
+</div>
 
-    <hr>
+<!-- SOAP Form -->
+<form method="post">
+    {% csrf_token %}
+    <div class="soap-form">
 
-    <h2>{% if is_edit %}Edit{% else %}New{% endif %} SOAP Entry</h2>
+        <div class="soap-field">
+            <label class="soap-label" for="{{ form.scripture.id_for_label }}">
+                <span class="soap-letter">S</span> Scripture
+            </label>
+            <textarea
+                name="{{ form.scripture.html_name }}"
+                id="{{ form.scripture.id_for_label }}"
+                placeholder="Write out a verse or passage that stood out to you…"
+            >{{ form.scripture.value|default:'' }}</textarea>
+        </div>
 
-    <form method="post">
-        {% csrf_token %}
-        <table>
-            {{ form.as_table }}
-        </table>
-        <button type="submit">
+        <div class="soap-field">
+            <label class="soap-label" for="{{ form.observation.id_for_label }}">
+                <span class="soap-letter">O</span> Observation
+            </label>
+            <textarea
+                name="{{ form.observation.html_name }}"
+                id="{{ form.observation.id_for_label }}"
+                placeholder="What do you notice about this passage? Who is speaking? What is happening?"
+            >{{ form.observation.value|default:'' }}</textarea>
+        </div>
+
+        <div class="soap-field">
+            <label class="soap-label" for="{{ form.application.id_for_label }}">
+                <span class="soap-letter">A</span> Application
+            </label>
+            <textarea
+                name="{{ form.application.html_name }}"
+                id="{{ form.application.id_for_label }}"
+                placeholder="How does this apply to your life today?"
+            >{{ form.application.value|default:'' }}</textarea>
+        </div>
+
+        <div class="soap-field">
+            <label class="soap-label" for="{{ form.prayer.id_for_label }}">
+                <span class="soap-letter">P</span> Prayer
+            </label>
+            <textarea
+                name="{{ form.prayer.html_name }}"
+                id="{{ form.prayer.id_for_label }}"
+                placeholder="Write a short prayer in response to what you've read…"
+            >{{ form.prayer.value|default:'' }}</textarea>
+        </div>
+
+    </div>
+
+    <div class="action-row" style="margin-top:2rem;">
+        <button type="submit" class="btn btn-gold">
             {% if is_edit %}Update Entry{% else %}Save Entry{% endif %}
         </button>
-    </form>
+        <a href="{% url 'today' %}" class="btn btn-ghost">Cancel</a>
+    </div>
+</form>
 
-    <p><a href="{% url 'today' %}">&larr; Back to Today</a></p>
-</body>
-</html>
+<a class="back-link" href="{% url 'today' %}">← Back to Today</a>
+
+{% endblock %}
