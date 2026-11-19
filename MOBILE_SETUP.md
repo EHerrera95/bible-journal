@@ -48,15 +48,14 @@ notifications on again.
 
 ## 3. Schedule the daily send
 
-Add a second service in the same Railway project, using the **same GitHub repo**:
+Nothing to set up. The `Procfile` starts `run_verse_scheduler` next to the web
+server, and it runs `send_daily_verse` every 15 minutes. Each run notifies every
+user whose chosen time has passed and who hasn't been notified yet today, in
+their own time zone, so nobody gets two notifications in one day.
 
-* **Settings → Deploy → Custom Start Command:** `python manage.py send_daily_verse`
-* **Settings → Cron Schedule:** `*/15 * * * *` (every 15 minutes)
-* **Variables:** the same `DATABASE_URL`, `SECRET_KEY`, and `VAPID_*` as the web service
-
-Each run notifies every user whose chosen time has passed and who hasn't been notified
-yet today, in their own time zone. Running it often costs nothing extra, and nobody gets
-two notifications in one day.
+(If you'd rather use a separate Railway cron service, give it the start command
+`python manage.py send_daily_verse`, the schedule `*/15 * * * *`, and the same
+variables, then remove the scheduler from the `Procfile`.)
 
 ## 4. Install it on your iPhone
 
