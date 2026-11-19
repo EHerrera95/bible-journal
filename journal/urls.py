@@ -9,6 +9,10 @@ urlpatterns = [
     path("plans/",                          views.plans_view,           name="plans"),
     path("plans/select/",                   views.select_plan_view,     name="select_plan"),
 
+    # Plan schedule
+    path("schedule/",                       views.schedule_view,        name="schedule"),
+    path("schedule/mark/",                  views.mark_plan_day_view,   name="mark_plan_day"),
+
     # Journal entries
     path("journal/today/",                  views.journal_today_view,   name="journal_today"),
     path("journal/free/",                   views.journal_free_view,    name="journal_free"),
@@ -23,6 +27,17 @@ urlpatterns = [
     # Bible progress & reading tracking
     path("progress/",                       views.progress_view,        name="progress"),
     path("mark-read/",                      views.mark_read_view,       name="mark_read"),
+
+    # Daily verse + notifications
+    path("verse/",                          views.verse_view,           name="verse"),
+    path("settings/notifications/",         views.notifications_view,   name="notifications"),
+    path("push/subscribe/",                 views.push_subscribe_view,  name="push_subscribe"),
+    path("push/unsubscribe/",               views.push_unsubscribe_view, name="push_unsubscribe"),
+    path("push/test/",                      views.push_test_view,       name="push_test"),
+
+    # Mobile app (PWA) — must live at the site root
+    path("manifest.webmanifest",            views.manifest_view,        name="manifest"),
+    path("sw.js",                           views.service_worker_view,  name="service_worker"),
 
     # AJAX
     path("api/verse-count/",               views.verse_count_view,      name="verse_count"),

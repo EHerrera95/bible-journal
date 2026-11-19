@@ -1,9 +1,19 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}Bible Journal{% endblock %}</title>
+
+    <!-- Installable app (Add to Home Screen) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#1c1712">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Journal">
+    <link rel="apple-touch-icon" href="{% static 'journal/icons/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'journal/icons/favicon-32.png' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Lora:ital,wght@0,400;0,500;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
@@ -32,6 +42,7 @@
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { font-size: 16px; scroll-behavior: smooth; }
+        [hidden] { display: none !important; }
 
         body {
             font-family: 'Lora', Georgia, serif;
@@ -53,7 +64,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            height: 56px;
+            height: calc(56px + env(safe-area-inset-top));
+            padding-top: env(safe-area-inset-top);
             position: sticky;
             top: 0;
             z-index: 100;
@@ -185,13 +197,62 @@
         /* Action row */
         .action-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-top: 1.5rem; }
 
+        /* Plan mode switch (Today dashboard) */
+        .mode-switch-btn {
+            font-family: 'Crimson Pro', serif;
+            font-size: 0.82rem;
+            padding: 0.3rem 0.85rem;
+            border: 1px solid var(--parchment-mid);
+            border-radius: 20px;
+            background: var(--cream);
+            color: var(--ink-muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .mode-switch-active {
+            background: var(--ink);
+            border-color: var(--ink);
+            color: var(--parchment);
+        }
+
+        /* Verse of the day */
+        .verse-hero { background: var(--ink); color: var(--parchment); border-radius: var(--radius-lg); padding: 1.75rem 2rem; box-shadow: var(--shadow-md); margin-bottom: 1.5rem; position: relative; }
+        .verse-hero-label { font-family: 'Crimson Pro', serif; font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-light); margin-bottom: 0.6rem; }
+        .verse-hero-text { font-family: 'Lora', serif; font-style: italic; font-size: 1.12rem; line-height: 1.7; color: var(--parchment); }
+        .verse-hero-ref { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--gold-light); margin-top: 0.85rem; }
+        .verse-hero-ref span { font-family: 'Crimson Pro', serif; font-size: 0.75rem; letter-spacing: 0.1em; color: var(--ink-muted); margin-left: 0.35rem; }
+        .verse-hero a { color: var(--gold-light); }
+
+        /* Bottom tab bar (phones) */
+        .tabbar { display: none; }
+
         /* Responsive */
         @media (max-width: 600px) {
-            .page-wrapper { padding: 2rem 1rem 4rem; }
+            .page-wrapper { padding: 1.5rem 1rem calc(5.5rem + env(safe-area-inset-bottom)); }
             .page-title { font-size: 1.6rem; }
-            .card, .plan-card { padding: 1.25rem; }
-            .nav { padding: 0 1rem; }
+            .card, .plan-card, .verse-hero { padding: 1.25rem; }
+            .nav { padding-left: 1rem; padding-right: 1rem; }
+            .nav-links li:not(.nav-keep) { display: none; }
             .nav-links { gap: 0.75rem; }
+            /* iOS zooms into inputs under 16px */
+            input, select, textarea, .soap-field textarea, .form-field input { font-size: 16px !important; }
+            .btn { padding: 0.75rem 1.25rem; }
+            .history-table { display: block; overflow-x: auto; }
+
+            .tabbar {
+                display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
+                background: var(--ink); border-top: 1px solid rgba(181,134,46,0.3);
+                padding-bottom: env(safe-area-inset-bottom);
+                box-shadow: 0 -2px 12px rgba(28,23,18,0.3);
+            }
+            .tabbar a {
+                flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                gap: 0.1rem; padding: 0.45rem 0 0.4rem; min-height: 54px;
+                font-family: 'Crimson Pro', serif; font-size: 0.7rem; letter-spacing: 0.04em;
+                color: var(--parchment-mid); text-decoration: none;
+            }
+            .tabbar a .ti { font-size: 1.2rem; line-height: 1; }
+            .tabbar a.active { color: var(--gold-light); }
         }
     </style>
 </head>
@@ -203,9 +264,12 @@
         <ul class="nav-links">
             <li><a href="{% url 'today' %}">Today</a></li>
             <li><a href="{% url 'journal_free' %}">Free Entry</a></li>
+            <li><a href="{% url 'schedule' %}">Schedule</a></li>
             <li><a href="{% url 'progress' %}">Progress</a></li>
             <li><a href="{% url 'journal_history' %}">History</a></li>
-            <li>
+            <li><a href="{% url 'verse' %}">Verse</a></li>
+            <li class="nav-keep"><a href="{% url 'notifications' %}" title="Daily verse reminder" aria-label="Daily verse reminder">🔔</a></li>
+            <li class="nav-keep">
                 <form method="post" action="{% url 'logout' %}" style="display:inline;">
                     {% csrf_token %}
                     <button type="submit" class="nav-logout-btn">Log out</button>
@@ -218,6 +282,24 @@
     <main class="page-wrapper">
         {% block content %}{% endblock %}
     </main>
+
+    {% if user.is_authenticated %}
+    {% with p=request.path %}
+    <nav class="tabbar" aria-label="Main">
+        <a href="{% url 'today' %}" class="{% if p == '/today/' %}active{% endif %}"><span class="ti">☀️</span>Today</a>
+        <a href="{% url 'verse' %}" class="{% if p == '/verse/' %}active{% endif %}"><span class="ti">📜</span>Verse</a>
+        <a href="{% url 'journal_free' %}" class="{% if p == '/journal/free/' %}active{% endif %}"><span class="ti">✍️</span>Write</a>
+        <a href="{% url 'schedule' %}" class="{% if p == '/schedule/' %}active{% endif %}"><span class="ti">📅</span>Plan</a>
+        <a href="{% url 'journal_history' %}" class="{% if p == '/journal/history/' %}active{% endif %}"><span class="ti">📓</span>History</a>
+    </nav>
+    {% endwith %}
+    {% endif %}
+
+    <script>
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js", { scope: "/" }));
+    }
+    </script>
 
 </body>
 </html>

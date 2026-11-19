@@ -10,6 +10,14 @@
 
 {% if user.is_authenticated %}
 
+    {% if daily_verse %}
+    <a href="{% url 'verse' %}" class="verse-hero" style="display:block; text-decoration:none;">
+        <p class="verse-hero-label">✦ Verse of the Day</p>
+        <p class="verse-hero-text">&ldquo;{{ daily_verse.text }}&rdquo;</p>
+        <p class="verse-hero-ref">{{ daily_verse.reference }} <span>{{ daily_verse.translation }}</span></p>
+    </a>
+    {% endif %}
+
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:2rem;">
 
         <!-- Plan-based -->
@@ -52,9 +60,44 @@
 
     <div class="action-row" style="margin-bottom:1.5rem;">
         <a href="{% url 'progress' %}" class="btn btn-ghost" style="font-size:0.9rem;">📊 Reading Progress</a>
+        {% if has_plan %}<a href="{% url 'schedule' %}" class="btn btn-ghost" style="font-size:0.9rem;">📅 Full Schedule</a>{% endif %}
         <a href="{% url 'plans' %}" class="btn btn-ghost" style="font-size:0.9rem;">📋 Reading Plans</a>
         <a href="{% url 'journal_history' %}" class="btn btn-ghost" style="font-size:0.9rem;">📓 History</a>
     </div>
+
+    <!-- 3-day preview strip (yesterday / today / tomorrow) -->
+    {% if preview_days %}
+    <div class="card" style="margin-bottom:1.5rem; padding:1.25rem 1.75rem;">
+        <h2 class="card-title" style="margin-bottom:1rem;"><span class="icon">📅</span> Coming Up</h2>
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.75rem;">
+            {% for pd in preview_days %}
+            <div class="preview-day {% if pd.is_today %}preview-today{% elif pd.is_past %}preview-past{% else %}preview-future{% endif %}">
+                <p class="preview-label">
+                    {% if pd.is_today %}Today{% elif pd.is_past %}Yesterday{% else %}Tomorrow{% endif %}
+                    &mdash; Day {{ pd.day_number }}
+                </p>
+                <p class="preview-passage">{{ pd.plan_day.passages }}</p>
+                {% if pd.plan_day.key_verse_ref %}
+                <p class="preview-verse">{{ pd.plan_day.key_verse_ref }}</p>
+                {% endif %}
+                {% if pd.is_past and not pd.completed %}
+                <div style="margin-top:0.6rem; display:flex; gap:0.4rem; flex-wrap:wrap;">
+                    <a href="/journal/entry/{{ pd.date|date:'Y-m-d' }}/"
+                       style="font-family:'Crimson Pro',serif; font-size:0.75rem; color:var(--rust); text-decoration:none;">
+                        ✍ Write entry
+                    </a>
+                </div>
+                {% elif pd.is_past and pd.completed %}
+                <p style="font-family:'Crimson Pro',serif; font-size:0.75rem; color:var(--sage); margin-top:0.4rem;">✓ Completed</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <div style="margin-top:1rem; text-align:right;">
+            <a href="{% url 'schedule' %}" style="font-family:'Crimson Pro',serif; font-size:0.85rem; color:var(--gold);">View full schedule →</a>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="divider">✦</div>
 
@@ -92,6 +135,41 @@
 <style>
 @media (max-width: 550px) {
     div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+    div[style*="grid-template-columns:repeat(3"] { grid-template-columns: 1fr !important; }
+}
+.preview-day {
+    background: var(--cream);
+    border: 1px solid var(--parchment-mid);
+    border-radius: var(--radius);
+    padding: 0.75rem 0.9rem;
+}
+.preview-today {
+    background: var(--gold-pale);
+    border-color: rgba(181,134,46,0.4);
+    border-left: 3px solid var(--gold);
+}
+.preview-past { opacity: 0.8; }
+.preview-future { opacity: 0.7; }
+.preview-label {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.3rem;
+}
+.preview-passage {
+    font-family: 'Lora', serif;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    line-height: 1.4;
+    margin-bottom: 0.25rem;
+}
+.preview-verse {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.78rem;
+    font-style: italic;
+    color: var(--ink-muted);
 }
 </style>
 

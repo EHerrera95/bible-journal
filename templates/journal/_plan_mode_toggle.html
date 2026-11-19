@@ -1,0 +1,65 @@
+{# templates/journal/_plan_mode_toggle.html #}
+{# Drop this inside any <form> that calls select_plan_view #}
+<div style="margin-bottom:0.6rem;">
+    <p style="font-family:'Crimson Pro',serif; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-muted); margin-bottom:0.5rem;">
+        Reading pace
+    </p>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <label class="mode-pill">
+            <input type="radio" name="plan_mode" value="calendar" checked style="display:none;">
+            <span class="mode-pill-label" onclick="setPillActive(this)">
+                📅 Daily — follow the calendar
+            </span>
+        </label>
+        <label class="mode-pill">
+            <input type="radio" name="plan_mode" value="sequential" style="display:none;">
+            <span class="mode-pill-label" onclick="setPillActive(this)">
+                📖 My pace — advance when I mark complete
+            </span>
+        </label>
+    </div>
+    <p style="font-family:'Crimson Pro',serif; font-size:0.75rem; color:var(--ink-muted); font-style:italic; margin-top:0.35rem;" id="mode-hint">
+        Daily: a new reading is scheduled every calendar day.
+    </p>
+</div>
+
+<style>
+.mode-pill { cursor: pointer; }
+.mode-pill-label {
+    display: inline-block;
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.82rem;
+    padding: 0.3rem 0.85rem;
+    border: 1px solid var(--parchment-mid);
+    border-radius: 20px;
+    background: var(--cream);
+    color: var(--ink-muted);
+    transition: all 0.15s;
+    user-select: none;
+}
+.mode-pill input:checked + .mode-pill-label,
+.mode-pill-label.active {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--parchment);
+}
+</style>
+
+<script>
+function setPillActive(el) {
+    // Mark radio checked
+    const radio = el.previousElementSibling;
+    radio.checked = true;
+    // Update pill styles in this form
+    const form = el.closest("form");
+    form.querySelectorAll(".mode-pill-label").forEach(p => p.classList.remove("active"));
+    el.classList.add("active");
+    // Update hint text
+    const hint = form.querySelector("#mode-hint");
+    if (hint) {
+        hint.textContent = radio.value === "sequential"
+            ? "My pace: you stay on the same day until you mark it read or journal it."
+            : "Daily: a new reading is scheduled every calendar day.";
+    }
+}
+</script>

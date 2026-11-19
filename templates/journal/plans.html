@@ -5,47 +5,112 @@
 
 <div class="page-header">
     <h1 class="page-title">Reading Plans</h1>
-    <p class="page-subtitle">Choose a plan that fits where you are</p>
+    <p class="page-subtitle">Choose a plan — your progress is always saved</p>
 </div>
 
 <!-- Curated Plans -->
-<h2 style="font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--ink); margin-bottom:1rem;">
-    Curated Plans
-</h2>
+{% if plan_data %}
+<div class="plans-grid">
+    {% for item in plan_data %}
+    <div class="plan-card-wrap {% if item.is_active %}plan-active{% elif item.is_done %}plan-done{% elif item.started %}plan-started{% endif %}">
 
-{% if plans %}
-<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:1.25rem; margin-bottom:3rem;">
-    {% for plan in plans %}
-    <div class="plan-select-card {% if current_plan and current_plan.id == plan.id %}active{% endif %}">
-        <div class="plan-select-header">
-            <span class="plan-select-length">{{ plan.day_count }} days</span>
-            {% if current_plan and current_plan.id == plan.id %}
-                <span class="plan-active-badge">✓ Active</span>
+        <!-- Header badges -->
+        <div class="plan-card-top">
+            <span class="plan-length-badge">{{ item.total }} days</span>
+            <div style="display:flex; gap:0.4rem; align-items:center;">
+                {% if item.is_active %}
+                    <span class="plan-status-badge badge-active">✓ Active</span>
+                {% endif %}
+                {% if item.is_done %}
+                    <span class="plan-status-badge badge-done">🎉 Completed</span>
+                {% elif item.started and not item.is_active %}
+                    <span class="plan-status-badge badge-started">In Progress</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Plan name & description -->
+        <h3 class="plan-card-name">{{ item.plan.name }}</h3>
+        <p class="plan-card-desc">{{ item.plan.description }}</p>
+
+        <!-- Progress bar (always shown, 0% if not started) -->
+        <div class="plan-progress-wrap">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.35rem;">
+                <span style="font-family:'Crimson Pro',serif; font-size:0.75rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-muted);">
+                    Progress
+                </span>
+                <span style="font-family:'Playfair Display',serif; font-size:0.9rem; color:{% if item.is_done %}var(--gold){% else %}var(--ink-muted){% endif %}; font-weight:{% if item.is_done %}700{% else %}400{% endif %};">
+                    {% if item.started %}
+                        {{ item.completed }} / {{ item.total }} days &mdash; {{ item.pct }}%
+                    {% else %}
+                        Not started
+                    {% endif %}
+                </span>
+            </div>
+            <div class="plan-progress-track">
+                <div class="plan-progress-fill {% if item.is_done %}fill-done{% endif %}"
+                     style="width:{{ item.pct }}%;"></div>
+            </div>
+        </div>
+
+        <!-- Form / actions -->
+        <div style="margin-top:1.1rem;">
+            {% if item.is_active %}
+                <!-- Active plan: change start date or mode only -->
+                <form method="post" action="{% url 'select_plan' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="plan_id" value="{{ item.plan.id }}">
+                    <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+                        <label class="field-label">Start date</label>
+                        <input type="date" name="start_date"
+                               value="{{ profile.plan_start_date|date:'Y-m-d' }}"
+                               class="date-input"
+                               onfocus="this.style.borderColor='var(--gold)'"
+                               onblur="this.style.borderColor=''">
+                    </div>
+                    {% include "journal/_plan_mode_toggle.html" %}
+                    <button type="submit" class="btn btn-ghost" style="margin-top:0.75rem; font-size:0.85rem; padding:0.45rem 1rem;">
+                        Update Settings
+                    </button>
+                </form>
+                <a href="{% url 'schedule' %}" class="btn btn-primary" style="margin-top:0.5rem; font-size:0.85rem; padding:0.45rem 1rem; display:inline-block;">
+                    View Schedule →
+                </a>
+
+            {% else %}
+                <!-- Non-active plan: show switch button with confirmation -->
+                <form method="post" action="{% url 'select_plan' %}"
+                      onsubmit="return confirmSwitch(this, '{{ item.plan.name|escapejs }}')">
+                    {% csrf_token %}
+                    <input type="hidden" name="plan_id" value="{{ item.plan.id }}">
+                    <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.25rem;">
+                        <label class="field-label">Start date</label>
+                        <input type="date" name="start_date"
+                               value="{% if item.original_start %}{{ item.original_start|date:'Y-m-d' }}{% else %}{% now 'Y-m-d' %}{% endif %}"
+                               class="date-input"
+                               onfocus="this.style.borderColor='var(--gold)'"
+                               onblur="this.style.borderColor=''">
+                    </div>
+                    {% if item.started and not item.is_done %}
+                    <p style="font-family:'Crimson Pro',serif; font-size:0.75rem; color:var(--ink-muted); font-style:italic; margin-bottom:0.6rem;">
+                        ↑ Reconstructed from your original progress. Adjust only if needed.
+                    </p>
+                    {% endif %}
+                    {% include "journal/_plan_mode_toggle.html" %}
+                    <button type="submit"
+                            class="btn {% if item.started %}btn-ghost{% else %}btn-gold{% endif %}"
+                            style="margin-top:0.75rem; font-size:0.85rem; padding:0.45rem 1.2rem;">
+                        {% if item.is_done %}
+                            Restart Plan
+                        {% elif item.started %}
+                            Resume Plan
+                        {% else %}
+                            Start This Plan
+                        {% endif %}
+                    </button>
+                </form>
             {% endif %}
         </div>
-        <h3 class="plan-select-name">{{ plan.name }}</h3>
-        <p class="plan-select-desc">{{ plan.description }}</p>
-
-        <form method="post" action="{% url 'select_plan' %}" style="margin-top:1.25rem;">
-            {% csrf_token %}
-            <input type="hidden" name="plan_id" value="{{ plan.id }}">
-            <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
-                <label style="font-family:'Crimson Pro',serif; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-muted);">
-                    Start date
-                </label>
-                <input
-                    type="date"
-                    name="start_date"
-                    value="{% now 'Y-m-d' %}"
-                    style="font-family:'Lora',serif; font-size:0.85rem; padding:0.3rem 0.6rem; border:1px solid var(--parchment-mid); border-radius:var(--radius); background:var(--cream); color:var(--ink); outline:none;"
-                    onfocus="this.style.borderColor='var(--gold)'"
-                    onblur="this.style.borderColor=''"
-                >
-            </div>
-            <button type="submit" class="btn {% if current_plan and current_plan.id == plan.id %}btn-ghost{% else %}btn-gold{% endif %}" style="margin-top:0.9rem; font-size:0.88rem; padding:0.5rem 1.2rem;">
-                {% if current_plan and current_plan.id == plan.id %}Switch Start Date{% else %}Start This Plan{% endif %}
-            </button>
-        </form>
     </div>
     {% endfor %}
 </div>
@@ -70,13 +135,12 @@
 </p>
 
 <div class="card">
-    <form method="post" action="{% url 'select_plan' %}">
+    <form method="post" action="{% url 'select_plan' %}"
+          onsubmit="return confirmSwitch(this, document.getElementById('book-id-hidden').options ? '' : document.getElementById('book-id-hidden').value)">
         {% csrf_token %}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-bottom:1.25rem;">
             <div>
-                <label style="font-family:'Crimson Pro',serif; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-muted); display:block; margin-bottom:0.4rem;">
-                    Old Testament
-                </label>
+                <label class="field-label" style="display:block; margin-bottom:0.4rem;">Old Testament</label>
                 <select name="book_id" id="book-select-ot" class="book-select" onchange="syncSelect('ot')">
                     <option value="">— Choose a book —</option>
                     {% for book in bible_books %}
@@ -87,9 +151,7 @@
                 </select>
             </div>
             <div>
-                <label style="font-family:'Crimson Pro',serif; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-muted); display:block; margin-bottom:0.4rem;">
-                    New Testament
-                </label>
+                <label class="field-label" style="display:block; margin-bottom:0.4rem;">New Testament</label>
                 <select name="book_id" id="book-select-nt" class="book-select" onchange="syncSelect('nt')">
                     <option value="">— Choose a book —</option>
                     {% for book in bible_books %}
@@ -103,21 +165,16 @@
 
         <input type="hidden" name="book_id" id="book-id-hidden" value="">
 
-        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem;">
-            <label style="font-family:'Crimson Pro',serif; font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-muted);">
-                Start date
-            </label>
-            <input
-                type="date"
-                name="start_date"
-                value="{% now 'Y-m-d' %}"
-                style="font-family:'Lora',serif; font-size:0.85rem; padding:0.3rem 0.6rem; border:1px solid var(--parchment-mid); border-radius:var(--radius); background:var(--cream); color:var(--ink); outline:none;"
-                onfocus="this.style.borderColor='var(--gold)'"
-                onblur="this.style.borderColor=''"
-            >
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+            <label class="field-label">Start date</label>
+            <input type="date" name="start_date" value="{% now 'Y-m-d' %}" class="date-input"
+                   onfocus="this.style.borderColor='var(--gold)'"
+                   onblur="this.style.borderColor=''">
         </div>
+        {% include "journal/_plan_mode_toggle.html" %}
 
-        <button type="submit" class="btn btn-gold" id="book-submit" disabled style="opacity:0.5; font-size:0.88rem; padding:0.5rem 1.2rem;">
+        <button type="submit" class="btn btn-gold" id="book-submit"
+                disabled style="opacity:0.5; font-size:0.88rem; padding:0.5rem 1.2rem; margin-top:0.75rem;">
             Start Book-by-Book Plan
         </button>
     </form>
@@ -125,8 +182,26 @@
 
 <a class="back-link" href="{% url 'today' %}">← Back to Today</a>
 
+<!-- Switch confirmation modal -->
+<div id="switch-modal" style="display:none; position:fixed; inset:0; background:rgba(28,23,18,0.55); z-index:500; align-items:center; justify-content:center;">
+    <div style="background:var(--parchment); border-radius:var(--radius-lg); padding:2rem; max-width:420px; width:90%; box-shadow:var(--shadow-lg);">
+        <h3 style="font-family:'Playfair Display',serif; font-size:1.2rem; margin-bottom:0.75rem;" id="modal-title">Switch Reading Plan?</h3>
+        <p style="font-family:'Lora',serif; font-size:0.9rem; color:var(--ink-muted); line-height:1.6;" id="modal-body"></p>
+        <div style="display:flex; gap:0.75rem; margin-top:1.5rem; justify-content:flex-end;">
+            <button onclick="cancelSwitch()" class="btn btn-ghost" style="font-size:0.88rem; padding:0.5rem 1.1rem;">Cancel</button>
+            <button onclick="confirmSwitchOk()" class="btn btn-gold" style="font-size:0.88rem; padding:0.5rem 1.1rem;" id="modal-confirm">Switch Plan</button>
+        </div>
+    </div>
+</div>
+
 <style>
-.plan-select-card {
+.plans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 3rem;
+}
+.plan-card-wrap {
     background: var(--parchment);
     border: 1px solid var(--parchment-mid);
     border-radius: var(--radius-lg);
@@ -134,45 +209,89 @@
     box-shadow: var(--shadow-sm);
     display: flex;
     flex-direction: column;
-    transition: box-shadow 0.2s, border-color 0.2s;
+    transition: box-shadow 0.2s;
 }
-.plan-select-card:hover { box-shadow: var(--shadow-md); }
-.plan-select-card.active { border-color: var(--gold); border-left: 3px solid var(--gold); }
+.plan-card-wrap:hover { box-shadow: var(--shadow-md); }
+.plan-active  { border-color: var(--gold); border-left: 3px solid var(--gold); }
+.plan-done    { border-color: #4a6741; border-left: 3px solid #4a6741; }
+.plan-started { border-left: 3px solid var(--gold-light); }
 
-.plan-select-header {
+.plan-card-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.6rem;
 }
-.plan-select-length {
+.plan-length-badge {
     font-family: 'Crimson Pro', serif;
     font-size: 0.75rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--ink-muted);
 }
-.plan-active-badge {
+.plan-status-badge {
     font-family: 'Crimson Pro', serif;
-    font-size: 0.75rem;
-    color: var(--gold);
-    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.55rem;
+    border-radius: 10px;
 }
-.plan-select-name {
+.badge-active  { background: var(--gold-pale); color: var(--gold); font-weight: 600; }
+.badge-done    { background: rgba(74,103,65,0.12); color: #4a6741; font-weight: 600; }
+.badge-started { background: var(--parchment-mid); color: var(--ink-muted); }
+
+.plan-card-name {
     font-family: 'Playfair Display', serif;
-    font-size: 1.05rem;
+    font-size: 1rem;
     font-weight: 700;
     color: var(--ink);
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.5rem;
     line-height: 1.3;
 }
-.plan-select-desc {
+.plan-card-desc {
     font-family: 'Lora', serif;
-    font-size: 0.85rem;
+    font-size: 0.83rem;
     color: var(--ink-muted);
     font-style: italic;
-    line-height: 1.6;
+    line-height: 1.55;
     flex: 1;
+    margin-bottom: 0.75rem;
+}
+
+.plan-progress-wrap { margin-top: auto; }
+.plan-progress-track {
+    height: 6px;
+    background: var(--parchment-mid);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.plan-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    border-radius: 3px;
+    transition: width 0.4s;
+    min-width: 0;
+}
+.fill-done { background: linear-gradient(90deg, #4a6741, #6a9460); }
+
+.field-label {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+}
+.date-input {
+    font-family: 'Lora', serif;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--parchment-mid);
+    border-radius: var(--radius);
+    background: var(--cream);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
 }
 .book-select {
     width: 100%;
@@ -187,36 +306,65 @@
     cursor: pointer;
 }
 .book-select:focus { border-color: var(--gold); }
+
+@media (max-width: 600px) {
+    .plans-grid { grid-template-columns: 1fr; }
+}
 </style>
 
 <script>
-// Keep the two selects mutually exclusive and sync the hidden input
+// ── Book-by-book selector ────────────────────────────────────────────────────
 function syncSelect(which) {
-    const ot = document.getElementById("book-select-ot");
-    const nt = document.getElementById("book-select-nt");
+    const ot     = document.getElementById("book-select-ot");
+    const nt     = document.getElementById("book-select-nt");
     const hidden = document.getElementById("book-id-hidden");
-    const btn = document.getElementById("book-submit");
+    const btn    = document.getElementById("book-submit");
 
-    if (which === "ot" && ot.value) {
-        nt.value = "";
-        hidden.value = ot.value;
-    } else if (which === "nt" && nt.value) {
-        ot.value = "";
-        hidden.value = nt.value;
-    } else {
-        hidden.value = "";
-    }
+    if (which === "ot" && ot.value) { nt.value = ""; hidden.value = ot.value; }
+    else if (which === "nt" && nt.value) { ot.value = ""; hidden.value = nt.value; }
+    else { hidden.value = ""; }
 
-    const hasSelection = hidden.value !== "";
-    btn.disabled = !hasSelection;
-    btn.style.opacity = hasSelection ? "1" : "0.5";
+    const has = hidden.value !== "";
+    btn.disabled     = !has;
+    btn.style.opacity = has ? "1" : "0.5";
 }
 
-// Remove the duplicate name="book_id" from the visible selects on submit
-// so only the hidden input is submitted
-document.querySelector("form:last-of-type").addEventListener("submit", function() {
+document.querySelector(".card form").addEventListener("submit", function() {
     document.getElementById("book-select-ot").removeAttribute("name");
     document.getElementById("book-select-nt").removeAttribute("name");
+});
+
+// ── Switch confirmation modal ─────────────────────────────────────────────────
+let _pendingForm = null;
+const currentPlanName = "{{ current_plan.name|escapejs|default:'' }}";
+
+function confirmSwitch(form, newPlanName) {
+    // If no active plan, or switching to same plan, skip modal
+    if (!currentPlanName || !newPlanName || newPlanName === currentPlanName) {
+        return true;
+    }
+    _pendingForm = form;
+    document.getElementById("modal-title").textContent = "Switch Reading Plan?";
+    document.getElementById("modal-body").textContent  =
+        `You're currently on "${currentPlanName}". Switching to "${newPlanName}" will make it your active plan — your progress on "${currentPlanName}" is fully saved and you can return to it anytime.`;
+    const modal = document.getElementById("switch-modal");
+    modal.style.display = "flex";
+    return false; // prevent immediate submit
+}
+
+function confirmSwitchOk() {
+    document.getElementById("switch-modal").style.display = "none";
+    if (_pendingForm) { _pendingForm.submit(); _pendingForm = null; }
+}
+
+function cancelSwitch() {
+    document.getElementById("switch-modal").style.display = "none";
+    _pendingForm = null;
+}
+
+// Close on backdrop click
+document.getElementById("switch-modal").addEventListener("click", function(e) {
+    if (e.target === this) cancelSwitch();
 });
 </script>
 

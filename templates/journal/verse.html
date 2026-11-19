@@ -1,0 +1,48 @@
+{% extends "journal/base.html" %}
+{% block title %}Verse of the Day — Bible Journal{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Verse of the Day</h1>
+    <p class="page-subtitle">{{ day|date:"l, F j, Y" }}</p>
+</div>
+
+<div class="verse-hero">
+    <p class="verse-hero-text">&ldquo;{{ verse.text }}&rdquo;</p>
+    <p class="verse-hero-ref">{{ verse.reference }} <span>{{ verse.translation }}</span></p>
+</div>
+
+<div class="action-row" style="margin-bottom:2rem;">
+    <a href="{% url 'journal_free' %}?ref={{ verse.reference|urlencode }}" class="btn btn-primary">✍️ Journal on this verse</a>
+    <a href="{% url 'notifications' %}" class="btn btn-ghost">🔔 Daily reminder</a>
+</div>
+
+{% if recent %}
+<div class="card">
+    <h2 class="card-title"><span class="icon">📜</span> Recent Verses</h2>
+    <ul class="verse-list">
+        {% for v in recent %}
+        <li>
+            <span class="verse-list-date">{{ v.date|date:"M j" }}</span>
+            <div>
+                <p class="verse-list-ref">{{ v.reference }}</p>
+                <p class="snippet">{{ v.text|truncatechars:140 }}</p>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<p style="font-family:'Crimson Pro',serif; font-size:0.8rem; color:var(--ink-muted); text-align:center;">
+    Scripture quotations marked WEB are from the World English Bible (public domain).
+</p>
+
+<style>
+.verse-list { list-style: none; display: flex; flex-direction: column; gap: 1rem; }
+.verse-list li { display: grid; grid-template-columns: 3.5rem 1fr; gap: 0.75rem; border-bottom: 1px solid var(--rule); padding-bottom: 0.85rem; }
+.verse-list li:last-child { border-bottom: none; padding-bottom: 0; }
+.verse-list-date { font-family: 'Crimson Pro', serif; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--gold); padding-top: 0.15rem; }
+.verse-list-ref { font-family: 'Playfair Display', serif; font-size: 0.95rem; font-weight: 600; color: var(--ink); line-height: 1.3; margin-bottom: 0.2rem; }
+</style>
+{% endblock %}

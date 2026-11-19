@@ -1,0 +1,444 @@
+{% extends "journal/base.html" %}
+{% block title %}Reading Schedule — Bible Journal{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1 class="page-title">Reading Schedule</h1>
+    <p class="page-subtitle">{{ plan.name }}</p>
+</div>
+
+<!-- Mode indicator + quick switch -->
+<div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+    <span style="font-family:'Crimson Pro',serif; font-size:0.8rem; color:var(--ink-muted); letter-spacing:0.06em; text-transform:uppercase;">
+        Reading pace:
+    </span>
+    <form method="post" action="{% url 'select_plan' %}" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="plan_id" value="{{ profile.reading_plan.id }}">
+        <input type="hidden" name="start_date" value="{{ profile.plan_start_date|date:'Y-m-d' }}">
+        <input type="hidden" name="plan_mode" value="calendar">
+        <button type="submit"
+            class="mode-switch-btn {% if not is_sequential %}mode-switch-active{% endif %}"
+            title="Advance one day per calendar day">
+            📅 Daily
+        </button>
+    </form>
+    <form method="post" action="{% url 'select_plan' %}" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="plan_id" value="{{ profile.reading_plan.id }}">
+        <input type="hidden" name="start_date" value="{{ profile.plan_start_date|date:'Y-m-d' }}">
+        <input type="hidden" name="plan_mode" value="sequential">
+        <button type="submit"
+            class="mode-switch-btn {% if is_sequential %}mode-switch-active{% endif %}"
+            title="Advance only when you mark a day complete">
+            📖 My Pace
+        </button>
+    </form>
+    <span style="font-family:'Crimson Pro',serif; font-size:0.78rem; color:var(--ink-muted); font-style:italic;">
+        {% if is_sequential %}
+            You advance when you mark a day complete or journal it.
+        {% else %}
+            A new day is scheduled automatically each calendar day.
+        {% endif %}
+    </span>
+</div>
+
+<!-- Progress summary -->
+<div class="card" style="margin-bottom:2rem;">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <p style="font-family:'Crimson Pro',serif; font-size:0.8rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-muted); margin-bottom:0.25rem;">Plan Progress</p>
+            <p style="font-family:'Playfair Display',serif; font-size:1.5rem; font-weight:700; color:var(--ink);">
+                {{ completed_days }}
+                <span style="color:var(--ink-muted); font-size:1rem; font-weight:400;">/ {{ total_days }} days completed</span>
+            </p>
+        </div>
+        <div style="text-align:right;">
+            <p style="font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:var(--gold);" id="pct-label">{{ pct_complete }}%</p>
+            <p style="font-family:'Crimson Pro',serif; font-size:0.85rem; color:var(--ink-muted);">of plan read</p>
+        </div>
+    </div>
+    <div style="margin-top:1.25rem; height:8px; background:var(--parchment-mid); border-radius:4px; overflow:hidden;">
+        <div id="progress-bar" style="height:100%; width:{{ pct_complete }}%; background:linear-gradient(90deg, var(--gold), var(--gold-light)); border-radius:4px; transition:width 0.4s;"></div>
+    </div>
+</div>
+
+<!-- Legend -->
+<div style="display:flex; gap:1.25rem; flex-wrap:wrap; margin-bottom:1.5rem; align-items:center;">
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span style="display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:#4a6741; color:white; font-family:'Crimson Pro',serif; font-size:0.7rem;">1</span>
+        <span style="font-family:'Crimson Pro',serif; font-size:0.82rem; color:var(--ink-muted);">Journaled</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span style="display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:var(--gold); color:white; font-family:'Crimson Pro',serif; font-size:0.7rem;">2</span>
+        <span style="font-family:'Crimson Pro',serif; font-size:0.82rem; color:var(--ink-muted);">Read</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span style="display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:var(--rust); color:white; font-family:'Crimson Pro',serif; font-size:0.7rem;">3</span>
+        <span style="font-family:'Crimson Pro',serif; font-size:0.82rem; color:var(--ink-muted);">Missed</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span style="display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:var(--gold); color:white; font-family:'Crimson Pro',serif; font-size:0.7rem; box-shadow:0 0 0 3px rgba(181,134,46,0.3);">4</span>
+        <span style="font-family:'Crimson Pro',serif; font-size:0.82rem; color:var(--ink-muted);">Today</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span style="display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:var(--parchment-mid); color:var(--ink-muted); font-family:'Crimson Pro',serif; font-size:0.7rem; opacity:0.6;">5</span>
+        <span style="font-family:'Crimson Pro',serif; font-size:0.82rem; color:var(--ink-muted);">Upcoming</span>
+    </div>
+    <a href="#day-today" style="margin-left:auto; font-family:'Crimson Pro',serif; font-size:0.85rem; color:var(--gold);">Jump to today ↓</a>
+</div>
+
+<!-- Schedule table -->
+<div class="card" style="padding:0; overflow:hidden;">
+    <table class="schedule-table">
+        <thead>
+            <tr>
+                <th style="width:60px;">Day</th>
+                <th style="width:120px;">Date</th>
+                <th>Passage</th>
+                <th style="width:180px;">Key Verse</th>
+                <th style="width:80px; text-align:center;">Status</th>
+                <th style="width:200px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in page_obj %}
+            <tr id="{% if row.is_today %}day-today{% else %}day-{{ row.day_number }}{% endif %}"
+                class="schedule-row status-{{ row.status }}"
+                data-plan-day-id="{{ row.plan_day.id }}"
+                data-status="{{ row.status }}">
+
+                <!-- Day number -->
+                <td class="day-num-cell">
+                    <span class="day-badge {% if row.is_today %}day-badge-today{% endif %}">
+                        {{ row.day_number }}
+                    </span>
+                </td>
+
+                <!-- Date -->
+                <td class="date-cell-sched">{{ row.date|date:"M j, Y" }}</td>
+
+                <!-- Passage -->
+                <td class="passage-cell-sched">{{ row.plan_day.passages }}</td>
+
+                <!-- Key Verse -->
+                <td class="key-verse-cell">
+                    {% if row.plan_day.key_verse_ref %}
+                        <span style="font-style:italic; color:var(--ink-muted); font-size:0.85rem;">{{ row.plan_day.key_verse_ref }}</span>
+                    {% else %}
+                        <span style="color:var(--parchment-mid);">—</span>
+                    {% endif %}
+                </td>
+
+                <!-- Status icon -->
+                <td style="text-align:center;">
+                    {% if row.status == "journaled" %}
+                        <span title="Journaled" style="color:var(--sage); font-size:1.1rem;">📖</span>
+                    {% elif row.status == "read" %}
+                        <span title="Marked read" style="color:var(--gold); font-size:1.1rem;">✓</span>
+                    {% elif row.status == "missed" %}
+                        <span title="Not yet completed" class="missed-dot" id="status-{{ row.plan_day.id }}">○</span>
+                    {% elif row.status == "today" %}
+                        <span title="Today" style="color:var(--gold); font-weight:700; font-size:0.8rem; font-family:'Crimson Pro',serif; letter-spacing:0.06em;">TODAY</span>
+                    {% else %}
+                        <span style="color:var(--parchment-mid); font-size:0.85rem;">—</span>
+                    {% endif %}
+                </td>
+
+                <!-- Actions -->
+                <td class="action-cell">
+                    {% if row.status == "journaled" %}
+                        <a href="{{ row.journal_url }}" class="sched-btn sched-btn-ghost">Edit Entry</a>
+                    {% elif row.status == "read" %}
+                        <a href="{{ row.journal_url }}" class="sched-btn sched-btn-ghost">Add Journal</a>
+                        <button type="button"
+                                class="sched-btn sched-btn-unmark"
+                                onclick="unmarkDay(this, {{ row.plan_day.id }})"
+                                title="Unmark as read">Unmark</button>
+                    {% elif row.status == "missed" or row.status == "today" %}
+                        <a href="{{ row.journal_url }}" class="sched-btn sched-btn-primary">Write Entry</a>
+                        <button type="button"
+                                class="sched-btn sched-btn-secondary"
+                                onclick="markDay(this, {{ row.plan_day.id }})"
+                                id="mark-btn-{{ row.plan_day.id }}">
+                            Mark Read
+                        </button>
+                    {% else %}
+                        {# upcoming — no actions #}
+                        <span style="color:var(--parchment-mid); font-size:0.8rem; font-family:'Crimson Pro',serif;">Upcoming</span>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="pagination-row" style="margin-top:1.25rem;">
+    <span class="page-info">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    <div style="display:flex; gap:0.5rem;">
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-ghost" style="font-size:0.85rem; padding:0.4rem 1rem;">← Previous</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" class="btn btn-ghost" style="font-size:0.85rem; padding:0.4rem 1rem;">Next →</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<a class="back-link" href="{% url 'today' %}">← Back to Today</a>
+
+<!-- CSRF for AJAX -->
+<form id="csrf-form" style="display:none;">{% csrf_token %}</form>
+
+<style>
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+.schedule-table thead th {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    text-align: left;
+    padding: 0.6rem 1rem;
+    background: var(--parchment-dark);
+    border-bottom: 1px solid var(--parchment-mid);
+}
+.schedule-row {
+    border-bottom: 1px solid rgba(181,134,46,0.1);
+    transition: background 0.15s;
+}
+.schedule-row:hover { background: var(--gold-pale); }
+.schedule-row td { padding: 0.75rem 1rem; vertical-align: middle; }
+
+/* Row — no more background tints */
+.status-today    td:first-child { border-left: 3px solid var(--gold); }
+.status-journaled td:first-child { border-left: 3px solid transparent; }
+.status-read      td:first-child { border-left: 3px solid transparent; }
+.status-missed    td:first-child { border-left: 3px solid transparent; }
+.status-upcoming  td:first-child { border-left: 3px solid transparent; }
+.schedule-row:hover { background: var(--gold-pale) !important; opacity: 1; }
+.status-upcoming { opacity: 0.6; }
+
+/* Day badge colors by status */
+.status-journaled .day-badge { background: #4a6741; color: white; }
+.status-read      .day-badge { background: var(--gold); color: white; }
+.status-missed    .day-badge { background: var(--rust); color: white; }
+.status-today     .day-badge { background: var(--gold); color: white; font-weight: 700; box-shadow: 0 0 0 3px rgba(181,134,46,0.3); }
+.status-upcoming  .day-badge { background: var(--parchment-mid); color: var(--ink-muted); }
+
+.day-num-cell { text-align: center; }
+.day-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--parchment-mid);
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+}
+.day-badge-today { font-weight: 700; }
+
+.date-cell-sched {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+    white-space: nowrap;
+}
+.passage-cell-sched {
+    font-family: 'Lora', serif;
+    color: var(--ink-soft);
+    line-height: 1.4;
+}
+.key-verse-cell {
+    font-family: 'Lora', serif;
+    line-height: 1.4;
+}
+.missed-dot {
+    color: var(--rust);
+    font-size: 1.1rem;
+}
+.action-cell {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Schedule-specific buttons (smaller than main .btn) */
+.sched-btn {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    padding: 0.3rem 0.7rem;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.sched-btn-primary   { background: var(--gold); color: white; }
+.sched-btn-primary:hover { background: var(--gold-light); }
+.sched-btn-secondary { background: var(--parchment-mid); color: var(--ink-soft); }
+.sched-btn-secondary:hover { background: var(--parchment-dark); }
+.sched-btn-ghost     { background: transparent; border: 1px solid var(--parchment-mid); color: var(--ink-muted); }
+.sched-btn-ghost:hover { border-color: var(--ink-muted); color: var(--ink); }
+.sched-btn-unmark    { background: transparent; border: 1px solid rgba(139,58,42,0.3); color: var(--rust); font-size:0.75rem; }
+.sched-btn-unmark:hover { background: rgba(139,58,42,0.06); }
+
+/* Legend */
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+}
+.status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.dot-journaled { background: #4a6741; }
+.dot-read      { background: var(--gold-light); }
+.dot-missed    { background: var(--rust); }
+.dot-today     { background: var(--gold); outline: 2px solid var(--gold-light); outline-offset: 1px; }
+.dot-upcoming  { background: var(--parchment-mid); border: 1px solid var(--parchment-dark); }
+
+/* Pagination */
+.pagination-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+.page-info {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+}
+
+@media (max-width: 700px) {
+    .schedule-table thead th:nth-child(4),
+    .schedule-table tbody td:nth-child(4) { display: none; }
+    .schedule-table thead th:nth-child(2),
+    .schedule-table tbody td:nth-child(2) { display: none; }
+}
+</style>
+
+<script>
+const CSRF    = document.querySelector("#csrf-form [name=csrfmiddlewaretoken]").value;
+const MARK_URL = "{% url 'mark_plan_day' %}";
+
+let completedCount = {{ completed_days }};
+const totalCount   = {{ total_days }};
+
+function updateProgressBar() {
+    const pct = totalCount ? Math.round(100 * completedCount / totalCount) : 0;
+    document.getElementById("pct-label").textContent = pct + "%";
+    document.getElementById("progress-bar").style.width = pct + "%";
+}
+
+async function markDay(btn, planDayId) {
+    btn.disabled = true;
+    btn.textContent = "Saving…";
+
+    try {
+        const res = await fetch(MARK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `csrfmiddlewaretoken=${CSRF}&plan_day_id=${planDayId}&action=mark`,
+        });
+        const data = await res.json();
+        if (data.ok) {
+            completedCount++;
+            updateProgressBar();
+
+            // Update the row in place
+            const row = btn.closest("tr");
+            row.classList.remove("status-missed", "status-today");
+            row.classList.add("status-read");
+            row.dataset.status = "read";
+
+            // Status cell → green tick
+            const statusCell = row.children[4];
+            statusCell.innerHTML = '<span title="Marked read" style="color:var(--gold); font-size:1.1rem;">✓</span>';
+
+            // Action cell → Add Journal + Unmark
+            const journalUrl = row.querySelector("a.sched-btn-primary, a.sched-btn-ghost")?.href || "";
+            row.children[5].innerHTML =
+                `<a href="${journalUrl}" class="sched-btn sched-btn-ghost">Add Journal</a>` +
+                `<button type="button" class="sched-btn sched-btn-unmark" onclick="unmarkDay(this,${planDayId})" title="Unmark as read">Unmark</button>`;
+        } else {
+            btn.disabled = false;
+            btn.textContent = "Mark Read";
+        }
+    } catch {
+        btn.disabled = false;
+        btn.textContent = "Mark Read";
+    }
+}
+
+async function unmarkDay(btn, planDayId) {
+    if (!confirm("Remove 'read' status for this day?")) return;
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(MARK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `csrfmiddlewaretoken=${CSRF}&plan_day_id=${planDayId}&action=unmark`,
+        });
+        const data = await res.json();
+        if (data.ok) {
+            completedCount = Math.max(0, completedCount - 1);
+            updateProgressBar();
+
+            const row = btn.closest("tr");
+            const isToday = row.id === "day-today";
+            row.classList.remove("status-read", "status-journaled");
+            row.classList.add(isToday ? "status-today" : "status-missed");
+            row.dataset.status = isToday ? "today" : "missed";
+
+            const statusCell = row.children[4];
+            statusCell.innerHTML = isToday
+                ? '<span style="color:var(--gold); font-weight:700; font-size:0.8rem; font-family:\'Crimson Pro\',serif; letter-spacing:0.06em;">TODAY</span>'
+                : '<span class="missed-dot">○</span>';
+
+            // Restore Write Entry + Mark Read buttons
+            const journalUrl = row.querySelector("a")?.href || "#";
+            row.children[5].innerHTML =
+                `<a href="${journalUrl}" class="sched-btn sched-btn-primary">Write Entry</a>` +
+                `<button type="button" class="sched-btn sched-btn-secondary" onclick="markDay(this,${planDayId})">Mark Read</button>`;
+        }
+    } catch {
+        btn.disabled = false;
+    }
+}
+
+// Scroll today's row into view on load
+document.addEventListener("DOMContentLoaded", () => {
+    const todayRow = document.getElementById("day-today");
+    if (todayRow) {
+        todayRow.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+});
+</script>
+
+{% endblock %}

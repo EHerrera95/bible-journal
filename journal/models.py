@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-from datetime import date
+from datetime import date, time
 
 
 class ReadingPlan(models.Model):
@@ -30,6 +30,13 @@ class PlanDay(models.Model):
 
 
 class Profile(models.Model):
+    PLAN_MODE_CALENDAR   = "calendar"
+    PLAN_MODE_SEQUENTIAL = "sequential"
+    PLAN_MODE_CHOICES    = [
+        (PLAN_MODE_CALENDAR,   "Calendar — advance one day per calendar day"),
+        (PLAN_MODE_SEQUENTIAL, "Sequential — advance only when you mark a day complete"),
+    ]
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -43,13 +50,48 @@ class Profile(models.Model):
         related_name="profiles"
     )
     plan_start_date = models.DateField(null=True, blank=True)
+    plan_mode = models.CharField(
+        max_length=12,
+        choices=PLAN_MODE_CHOICES,
+        default=PLAN_MODE_CALENDAR,
+    )
 
     def current_day_number(self, today=None):
         if not self.reading_plan or not self.plan_start_date:
             return None
+
+        if self.plan_mode == self.PLAN_MODE_SEQUENTIAL:
+            completed_day_numbers = set(
+                PlanDayCompletion.objects
+                .filter(user=self.user, plan_day__plan=self.reading_plan)
+                .values_list("plan_day__day_number", flat=True)
+            )
+            all_day_numbers = list(
+                self.reading_plan.days
+                .order_by("day_number")
+                .values_list("day_number", flat=True)
+            )
+            if not all_day_numbers:
+                return 1
+            for dn in all_day_numbers:
+                if dn not in completed_day_numbers:
+                    return dn
+            return all_day_numbers[-1]
+
+        # Calendar mode (default)
         today = today or date.today()
         delta = (today - self.plan_start_date).days
         return max(delta + 1, 1)
+
+    # Daily verse push notifications
+    verse_notifications  = models.BooleanField(default=False)
+    notify_time          = models.TimeField(default=time(7, 0))
+    timezone             = models.CharField(max_length=64, default="America/Chicago")
+    last_verse_push_date = models.DateField(null=True, blank=True)
+
+    @property
+    def is_sequential(self):
+        return self.plan_mode == self.PLAN_MODE_SEQUENTIAL
 
     def __str__(self):
         return f"Profile for {self.user.username}"
@@ -134,6 +176,53 @@ class JournalEntry(models.Model):
         return f"{self.user.username} - {self.entry_date}"
 
 
+class PlanDayCompletion(models.Model):
+    """
+    Records that a user has completed a specific plan day — either by
+    writing a journal entry, or by explicitly marking it as read.
+
+    This decouples plan progress from calendar date so users can backfill
+    missed days, and allows marking a day read without writing a SOAP entry.
+    """
+    SOURCE_JOURNAL = "journal"
+    SOURCE_MANUAL  = "manual"
+    SOURCE_CHOICES = [
+        (SOURCE_JOURNAL, "From journal entry"),
+        (SOURCE_MANUAL,  "Marked as read"),
+    ]
+
+    user         = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="plan_completions"
+    )
+    plan_day     = models.ForeignKey(
+        PlanDay,
+        on_delete=models.CASCADE,
+        related_name="completions"
+    )
+    completed_at = models.DateTimeField(auto_now_add=True)
+    source       = models.CharField(
+        max_length=10,
+        choices=SOURCE_CHOICES,
+        default=SOURCE_MANUAL,
+    )
+    journal_entry = models.OneToOneField(
+        "JournalEntry",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="plan_completion"
+    )
+
+    class Meta:
+        unique_together = ("user", "plan_day")
+        ordering = ["plan_day__day_number"]
+
+    def __str__(self):
+        return f"{self.user.username} — {self.plan_day} ({self.source})"
+
+
 class ReadingRecord(models.Model):
     """
     Tracks which parts of the Bible a user has read.
@@ -184,3 +273,34 @@ class ReadingRecord(models.Model):
         if self.is_whole_chapter():
             return f"{self.user.username} — {self.book_id} {self.chapter} (whole chapter)"
         return f"{self.user.username} — {self.book_id} {self.chapter}:{self.start_verse}-{self.end_verse}"
+
+
+class DailyVerse(models.Model):
+    """One verse of the day per calendar date (shared by all users)."""
+    date        = models.DateField(unique=True)
+    reference   = models.CharField(max_length=100)
+    text        = models.TextField()
+    translation = models.CharField(max_length=20, default="WEB")
+    source      = models.CharField(max_length=40, default="sample")  # sample / ourmanna / netbible / manual
+
+    class Meta:
+        ordering = ["-date"]
+
+    def __str__(self):
+        return f"{self.date} — {self.reference}"
+
+
+class PushSubscription(models.Model):
+    """A browser/phone Web Push endpoint for one user (one per installed device)."""
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name="push_subscriptions")
+    endpoint   = models.URLField(max_length=500, unique=True)
+    p256dh     = models.CharField(max_length=200)
+    auth       = models.CharField(max_length=100)
+    user_agent = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def as_webpush_info(self):
+        return {"endpoint": self.endpoint, "keys": {"p256dh": self.p256dh, "auth": self.auth}}
+
+    def __str__(self):
+        return f"{self.user.username} — {self.endpoint[:40]}…"
