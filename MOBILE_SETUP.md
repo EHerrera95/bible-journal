@@ -29,14 +29,11 @@ Railway (`Procfile`, `RAILWAY_PUBLIC_DOMAIN` in settings), so these steps use Ra
    | `DAILY_VERSE_SOURCE` | `ourmanna` (default), `netbible`, or `sample` |
 
 4. Under **Settings → Networking**, click **Generate Domain**. That URL is your app.
-5. Open a Railway shell on the service (or run `railway run`) and run these once:
-
-   ```
-   python manage.py createsuperuser
-   python manage.py seed_plans
-   python manage.py seed_daily_verses            # this month's 31-day sample
-   python manage.py seed_daily_verses --month 2026-12
-   ```
+5. Nothing to run by hand for data: on every start the `Procfile` runs
+   `setup_initial_data`, which seeds the reading plans and this month's sample
+   verses **only on an empty database**, so it's safe across redeploys.
+   For an admin login, run `python manage.py createsuperuser` from Railway's
+   service shell, or sign up through `/admin/` locally first.
 
 ## 2. Create push notification keys (one time)
 

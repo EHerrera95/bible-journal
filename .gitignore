@@ -14,3 +14,6 @@ db.sqlite3
 
 # collectstatic output
 staticfiles/
+
+# Railway secrets (paste into Railway Raw Editor, never commit)
+.env.railway
